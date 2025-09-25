@@ -1,4 +1,4 @@
-from src.obfuscator import obfuscator
+from obfuscator.obfuscator import get_csv, obfuscate_csv, obfuscator
 
 class TestGetCSV: 
     def test_csv(self): 
