@@ -1,5 +1,14 @@
-#Helper functions 
+import json
+import logging
 
+import boto3
+from botocore.exceptions import ClientError
+
+logger = logging.getLogger(__name__) #TODO: add logging to code 
+
+
+
+#Helper functions 
 def get_csv(bucket, file_name): 
     """
     function summary: 
@@ -14,9 +23,14 @@ def get_csv(bucket, file_name):
 
     """
     #use boto3 here 
+    s3 = boto3.client('s3')
+
+    s3.get_object(Bucket=bucket, Key=file_name)
+#TODO: check AWS secrets manager to connect to account 
+
     pass
 
-def obfuscate_csv(data, fields): 
+def obfuscate_csv(data:bytes, fields:list) -> bytes:   #TODO: use this style for all? 
     """
     function summary: 
     Pure function taking the data from the csv, and obfuscating the columns with the 
@@ -72,3 +86,17 @@ def obfuscator(input_json):
 
     pass
 
+
+
+
+
+if (__name__ == "__main__"):
+    pass
+#to run script as is and for testing. 
+
+
+
+
+
+
+#TODO: confirm security, PEP8 compliance
