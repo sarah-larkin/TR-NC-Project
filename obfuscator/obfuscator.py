@@ -1,11 +1,12 @@
 import json
+import csv
 import logging
+import pandas as pd
 
 import boto3
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__) #TODO: add logging to code 
-
 
 
 #Helper functions 
@@ -20,16 +21,27 @@ def get_csv(bucket, file_name):
 
     returns: 
     csv/bytes object to be used in the obfuscator function. 
+    OR
+    Pandas dataframe 
+    #TODO: confirm if using pandas?
 
     """
     #use boto3 here 
-    s3 = boto3.client('s3')
+    try:
+        s3 = boto3.client('s3')
+        csv_file_object = s3.get_object(Bucket=bucket, Key=file_name)   #dict 
+        df = pd.read_csv(csv_file_object['Body'])
+        #object_content = csv_file_object["Body"].read().decode("utf-8")
+        print(df)
+        return df
+    except ClientError as error:
+        #if error.response['Error']['Code'] == #select appropriate errors :
+        raise error
 
-    s3.get_object(Bucket=bucket, Key=file_name)
-#TODO: check AWS secrets manager to connect to account? 
-#dict reader? 
 
-    pass
+    
+
+
 
 def obfuscate_csv(data:bytes, fields:list) -> bytes:   #TODO: use this style for all? 
     """
@@ -38,7 +50,7 @@ def obfuscate_csv(data:bytes, fields:list) -> bytes:   #TODO: use this style for
     specified headings (fields). 
 
     args: 
-    data - bytes (returned from get_csv())
+    data - bytes (returned from get_csv()) #TODO OR Panda dataframe???
     fields - list (from JSON passed to obfuscator())    
 
     returns:
@@ -96,6 +108,8 @@ if (__name__ == "__main__"):
 #to run script as is and for testing. 
 
 
+# if (__name__ == "__main__"):
+#     get_csv(bucket='tr-nc-test-source-files', file_name='Titanic-Dataset.csv')
 
 
 
