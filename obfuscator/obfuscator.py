@@ -26,7 +26,8 @@ def get_csv(bucket, file_name):
     s3 = boto3.client('s3')
 
     s3.get_object(Bucket=bucket, Key=file_name)
-#TODO: check AWS secrets manager to connect to account 
+#TODO: check AWS secrets manager to connect to account? 
+#dict reader? 
 
     pass
 
