@@ -26,13 +26,11 @@ def get_csv(bucket, file_name):
     #TODO: confirm if using pandas?
 
     """
-    #use boto3 here 
+    
     try:
         s3 = boto3.client('s3')
         csv_file_object = s3.get_object(Bucket=bucket, Key=file_name)   #dict 
         df = pd.read_csv(csv_file_object['Body'])
-        #object_content = csv_file_object["Body"].read().decode("utf-8")
-        print(df)
         return df
     except ClientError as error:
         #if error.response['Error']['Code'] == #select appropriate errors :
@@ -83,7 +81,7 @@ def obfuscator(input_json):
 
     #validate JSON string 
         #file location valid
-        #file type = csv
+        #file type = csv - for extension could be a separate function to identify file type
         #fields valid
         #fields type = list of strings 
         #both elements present 
