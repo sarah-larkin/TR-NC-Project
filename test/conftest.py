@@ -17,7 +17,7 @@ def aws_credentials():
 def s3_client(aws_credentials):
     """mocked s3 client"""
     with mock_aws():      #could also be mock_aws
-        yield boto3.client('s3', region_name='eu-west-2')
+        yield boto3.client('s3', region_name='eu-west-2') #TODO:checkout session instead of hard coding region
 
 @pytest.fixture(scope='module')
 def mock_bucket(s3_client):
@@ -29,4 +29,11 @@ def mock_bucket(s3_client):
     )
     return name
 
-        
+@pytest.fixture(scope='module')
+def mock_file(s3_client, mock_bucket): 
+    file_name = 'test_file.csv'
+    s3_client.put_object(Bucket=mock_bucket,  #consider upload_fileobj for replicating larger file size
+                      Key=file_name,
+                      Body=b'name, address,\nJohn, Earth,\n') #byte string (docs state: Body=b'bytes'|file,)
+    return file_name
+#consider returning a dict with {"bucket": mock_bucket, "key": file_name} if likely to need more than just the key in future tests. 

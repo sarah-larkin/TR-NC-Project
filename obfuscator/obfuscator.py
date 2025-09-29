@@ -7,7 +7,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__) #TODO: add logging to code 
-
+s3 = boto3.client('s3')
 
 #Helper functions 
 def get_csv(bucket, file_name): 
@@ -28,14 +28,14 @@ def get_csv(bucket, file_name):
     """
     
     try:
-        s3 = boto3.client('s3')
         csv_file_object = s3.get_object(Bucket=bucket, Key=file_name)   #dict 
         df = pd.read_csv(csv_file_object['Body'])
         return df
-    except ClientError as error:
+    except ClientError as error: #more explicit error handling needed 
         #if error.response['Error']['Code'] == #select appropriate errors :
         raise error
-
+# S3.Client.exceptions.NoSuchKey
+# S3.Client.exceptions.InvalidObjectState
 
     
 
@@ -82,7 +82,7 @@ def obfuscator(input_json):
     #validate JSON string 
         #file location valid
         #file type = csv - for extension could be a separate function to identify file type
-        #fields valid
+        #fields valid (headings)
         #fields type = list of strings 
         #both elements present 
     #define bucket 
