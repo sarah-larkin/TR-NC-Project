@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__) #TODO: add logging to code
 s3 = boto3.client('s3')
 
 #Helper functions 
-def get_csv(bucket, file_name): 
+def get_csv(bucket, file_name, s3): 
     """
     function summary: 
     accesses the specified S3 bucket and retrieve the csv file. 
@@ -20,20 +20,24 @@ def get_csv(bucket, file_name):
     file_name - retrieved from json passed to obfuscator()
 
     returns: 
-    csv/bytes object to be used in the obfuscator function. 
-    OR
-    Pandas dataframe 
-    #TODO: confirm if using pandas?
+    Pandas DataFrame 
 
+    Exceptions: 
+    Raises ClientError if file name is not present. 
     """
-    
     try:
         csv_file_object = s3.get_object(Bucket=bucket, Key=file_name)   #dict 
+        #log
         df = pd.read_csv(csv_file_object['Body'])
         return df
-    except ClientError as error: #more explicit error handling needed 
-        #if error.response['Error']['Code'] == #select appropriate errors :
+    except pd.errors.EmptyDataError as error: 
+        #log
         raise error
+    except ClientError as error:
+        #log
+        raise error
+    #TODO: add logs 
+
 # S3.Client.exceptions.NoSuchKey
 # S3.Client.exceptions.InvalidObjectState
 
@@ -106,8 +110,8 @@ if (__name__ == "__main__"):
 #to run script as is and for testing. 
 
 
-# if (__name__ == "__main__"):
-#     get_csv(bucket='tr-nc-test-source-files', file_name='Titanic-Dataset.csv')
+if (__name__ == "__main__"):
+    get_csv(bucket='tr-nc-test-source-files', file_name='Titanic-Dataset.csv', s3=s3)
 
 
 
