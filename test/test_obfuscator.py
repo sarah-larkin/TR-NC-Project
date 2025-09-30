@@ -5,6 +5,7 @@ from moto.core import patch_client
 import pytest
 import pandas as pd
 from botocore.exceptions import ClientError
+from copy import deepcopy
 
 #fixtures mocking the s3_client, mock_bucket and mock_file can be found in test/conftest.py file.
 
@@ -46,14 +47,14 @@ class TestGetCSV:
     #     #not uploading JSON with .csv extension
     #     pass
 
-    def test_file_has_missing_data(self):
-        #eg. ID = int, name = str
-        #necessary here? 
-        pass
+    # def test_file_has_missing_data(self):
+    #     #eg. ID = int, name = str
+    #     #necessary here? 
+    #     pass
 
-    def test_columns_contain_correct_data_type(self):
-        #is this necessary? 
-        pass 
+    # def test_columns_contain_correct_data_type(self):
+    #     #is this necessary? 
+    #     pass 
             
     """check approriate error is raised/logged if error occurs
         #Exceptions:
@@ -64,6 +65,30 @@ class TestObfuscateCSV:
     def test_obfuscate_csv(self): 
         #test for purity 
         pass
+    def test_new_object_returned(self):
+        d = {'col1': [1, 2], 'col2': [3, 4]}
+        data = pd.DataFrame(d)
+        fields = ['col1', 'col2']
+        
+        result = obfuscate_csv(data, fields)
+
+        assert isinstance(result, pd.DataFrame)
+        assert result is not data
+
+    def test_original_data_is_not_mutated(self):
+        d = {'col1': [1, 2], 'col2': [3, 4]}
+        data = pd.DataFrame(d)
+        fields = ['col1', 'col2']
+
+        copy_of_original = deepcopy(data)
+        
+        result = obfuscate_csv(data, fields)
+
+        assert isinstance(result, pd.DataFrame)
+        pd.testing.assert_frame_equal(data, copy_of_original)
+
+
+
 
 class TestObfuscator: 
     #check bucket name is valid and exists

@@ -49,9 +49,6 @@ def get_csv(bucket, file_name, s3):
 # S3.Client.exceptions.InvalidObjectState
 
     
-
-
-
 def obfuscate_csv(data:bytes, fields:list) -> bytes:   #TODO: use this style for all? 
     """
     function summary: 
@@ -100,7 +97,7 @@ def obfuscator(input_json):
     #define file_name 
     #define fields 
 
-    csv_data = get_csv(bucket, file_name)
+    data = get_csv(bucket, file_name)
 
     obfuscated_bytes = obfuscate_csv(data, fields)
 
