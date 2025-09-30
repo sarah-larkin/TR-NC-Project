@@ -26,7 +26,7 @@ class TestGetCSV:
                             Body=b'')
         with pytest.raises(pd.errors.EmptyDataError) as exc: 
             get_csv(mock_bucket, empty_file, s3_client) 
-        assert exc.value.args[0] == 'No columns to parse from file'  #TODO: check this out further 
+        assert exc.value.args[0] == 'No columns to parse from file'  #TODO: check this out further, error message could change with new versions 
 
     def test_raises_clienterror_if_file_does_not_exist(self, mock_bucket, s3_client):
         """testing get_csv returns a client error for missing/incorrect file name"""
@@ -42,9 +42,18 @@ class TestGetCSV:
         err = exc.value.response['Error']
         assert err["Code"] == 'NoSuchKey'
 
-    def test_file_type(self): #better name needed
-        #not uploading JSON with .csv extension
+    # def test_file_type(self): #better name needed
+    #     #not uploading JSON with .csv extension
+    #     pass
+
+    def test_file_has_missing_data(self):
+        #eg. ID = int, name = str
+        #necessary here? 
         pass
+
+    def test_columns_contain_correct_data_type(self):
+        #is this necessary? 
+        pass 
             
     """check approriate error is raised/logged if error occurs
         #Exceptions:

@@ -6,7 +6,9 @@ import pandas as pd
 import boto3
 from botocore.exceptions import ClientError
 
-logger = logging.getLogger(__name__) #TODO: add logging to code 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG) #alter level if needed [debug, info, warning, error, critical]
+
 s3 = boto3.client('s3')
 
 #Helper functions 
@@ -23,20 +25,25 @@ def get_csv(bucket, file_name, s3):
     Pandas DataFrame 
 
     Exceptions: 
-    Raises ClientError if file name is not present. 
+    Raises ClientError NoSuchKey if file name is not present. 
+    Raises ClientError InvalidObjectState if file is archived and needs to be retored prior to accessing. 
+    Raises Pandas EmptyDataError if the file being retrieved is empty. 
     """
     try:
         csv_file_object = s3.get_object(Bucket=bucket, Key=file_name)   #dict 
-        #log
+        logging.info('csv file successfully retrieved')
+        
         df = pd.read_csv(csv_file_object['Body'])
         return df
+    
     except pd.errors.EmptyDataError as error: 
-        #log
+        logging.error('the file you are trying to retrieve does not contain any data')
         raise error
     except ClientError as error:
-        #log
+        logging.error('the file does not exist, check filename')
+        #TODO: what if it is an InvalidObjectState exception?
         raise error
-    #TODO: add logs 
+     
 
 # S3.Client.exceptions.NoSuchKey
 # S3.Client.exceptions.InvalidObjectState
