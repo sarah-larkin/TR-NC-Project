@@ -45,7 +45,7 @@ def get_csv(bucket:str, file_name:str, s3:object) -> pd.DataFrame:
     # S3.Client.exceptions.InvalidObjectState
 
     
-def obfuscate_csv(data:pd.DataFrame, fields:list) -> bytes:   #TODO: use this style for all? 
+def obfuscate_data(data:pd.DataFrame, fields:list) -> bytes:  #TODO: confirm if returning bytes or df #TODO: use this style for all? 
     """obfuscating the values under the headings defined in fields list.  
 
     args: 
@@ -55,13 +55,19 @@ def obfuscate_csv(data:pd.DataFrame, fields:list) -> bytes:   #TODO: use this st
     returns:
     new csv bytes, exact copy of original but with relevant columns obfuscated.  
     """
-
     df = data.copy()
 
-    for heading in fields: 
-        df[heading] = "xxx"
+    for heading in fields:
+        valid_columns = list(df.columns) 
+        if heading not in valid_columns: 
+            logger.warning(f"{heading} is an invalid header name")
+            return "invalid heading"
+        #if datatype is not str log a warning 
+        else: 
+            df[heading] = "xxx"
 
     return df
+    #TODO: keep as df here or convert to bytes alread? 
 
     #df[heading] = df[heading].str.replace(
 
@@ -89,29 +95,29 @@ def obfuscator(input_json):
     the specified sensitive data replaced with obfuscated string (boto3 put_object compatible).
     (The calling procedure will handle saving returned bytes from this function)
 
-    exceptions: #TODO
+    exceptions: #TODO: list exceptions 
     """
 
     #validate JSON string 
         #file location valid
-        #file type = csv - for extension could be a separate function to identify file type
+        #file type = csv  - if extended one of the valid file types handled
         #fields valid (headings)
         #fields type = list of strings 
         #both elements present 
-    #define bucket 
-    #define file_name 
-    #define fields 
 
-    bucket = input_json["file_to_obfuscate"]
-    file_name = 
-    data = get_csv(bucket, file_name)
+    bucket = input_json["file_to_obfuscate"] #update
+    file_name = input_json["file_to_obfuscate"]#update
+    fields = input_json["pii_fields"]
 
-    obfuscated_df = obfuscate_csv(data, fields)
+    """setup with extension in mind"""
+    #if file_name[-4:] == ".csv": 
+        #data = get_csv(bucket, file_name)
+        #obfuscated_df = obfuscate_data(data, fields)
+        #csv_output = obfuscated_df.to_csv()
+        #return csv_output 
 
-    #convert df into bytestream? 
 
     #return bytestream
-
     pass
 
 
