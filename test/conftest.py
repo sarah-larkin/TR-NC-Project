@@ -32,16 +32,18 @@ def mock_bucket(s3_client):
     return name
 
 @pytest.fixture(scope='module')
-def mock_file(s3_client, mock_bucket): 
+def mock_csv_file(s3_client, mock_bucket): 
+    """mocked csv file"""
     file_name = 'test_file.csv'
     s3_client.put_object(Bucket=mock_bucket,  #consider upload_fileobj for replicating larger file size
                       Key=file_name,
-                      Body=b'name,address\nPersonA,Earth\nPersonB,Mars') #byte string (docs state: Body=b'bytes'|file,)
+                      Body=b'name,address\nPersonA,Earth\nPersonB,Mars') #byte string 
     return file_name
 #consider returning a dict with {"bucket": mock_bucket, "key": file_name} if likely to need more than just the key in future tests. 
 
 @pytest.fixture(scope='function')
 def mock_df(): 
+    """mocked DataFrame"""
     d = {
     "Name": [                        
         "Alice",          # normal

@@ -63,18 +63,11 @@ def obfuscate_data(data:pd.DataFrame, fields:list) -> bytes:  #TODO: confirm if 
             logger.warning(f"{heading} is an invalid header name")
             return "invalid heading"
         #if datatype is not str log a warning 
+        #TODO: check how to specify specific fields within the pd and put in the warning
         else: 
             df[heading] = "xxx"
 
     return df
-    #TODO: keep as df here or convert to bytes alread? 
-
-    #df[heading] = df[heading].str.replace(
-
-    #obf_df = pd.DataFrame({heading: "xxx"})
-    #df.update(obf_Df)
-
-    #if cell empty --> "not data" (pd.fillna("no data"))?? 
 
 
 #Primary function 

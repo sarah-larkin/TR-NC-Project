@@ -7,15 +7,21 @@ import pandas as pd
 from botocore.exceptions import ClientError
 from copy import deepcopy
 
-#fixtures mocking the s3_client, mock_bucket and mock_file can be found in test/conftest.py file.
+"""
+fixtures can be found in test/conftest.py file mocking:
+s3_client, 
+mock_bucket, 
+mock_csv_file 
+mock_df 
+"""
 
 class TestGetCSV: 
-    def test_returns_df(self, mock_bucket, mock_file, s3_client): 
-        response = get_csv(mock_bucket, mock_file, s3_client) 
+    def test_returns_df(self, mock_bucket, mock_csv_file, s3_client): 
+        response = get_csv(mock_bucket, mock_csv_file, s3_client) 
         assert isinstance(response, pd.DataFrame)
     
-    def test_returns_content_from_the_named_csv_file(self, mock_bucket, mock_file, s3_client):
-        df = get_csv(mock_bucket, mock_file, s3_client) 
+    def test_returns_content_from_the_named_csv_file(self, mock_bucket, mock_csv_file, s3_client):
+        df = get_csv(mock_bucket, mock_csv_file, s3_client) 
         assert list(df.columns) == ['name', 'address']  #df.keys() also works 
         assert list(df.loc[0]) == ['PersonA', 'Earth']
         assert list(df.loc[1]) == ['PersonB', 'Mars']
@@ -56,7 +62,7 @@ class TestGetCSV:
     #     #is this necessary? 
     #     pass 
             
-    """check approriate error is raised/logged if error occurs
+    """#TODO:check approriate error is raised/logged if error occurs
         #Exceptions:
         # S3.Client.exceptions.NoSuchKey
         # S3.Client.exceptions.InvalidObjectState"""
@@ -103,9 +109,7 @@ class TestObfuscateCSV:
         assert list(result.loc[6]) == ["xxx", "xxx", "xxx", "xxx", "large text " * 2]
 
 
-
-
-
+        """mock data in list format in case needed for future tests"""
         # assert list(result.loc[2]) == ["", "", "", None, "legacy"]
         # assert list(result.loc[3]) == [None, None, None, pd.NaT, None]
         # assert list(result.loc[4]) == ["Charlie", "charlie@ex.co.uk", 0, "01/05/1975", "no action"]
