@@ -2,6 +2,8 @@ from moto import mock_aws #TODO: only mock_s3 needed? (mock_aws)
 import os
 import pytest
 import boto3
+import pandas as pd
+import numpy as np
 
 
 @pytest.fixture(scope='module', autouse=True)
@@ -37,3 +39,63 @@ def mock_file(s3_client, mock_bucket):
                       Body=b'name,address\nPersonA,Earth\nPersonB,Mars') #byte string (docs state: Body=b'bytes'|file,)
     return file_name
 #consider returning a dict with {"bucket": mock_bucket, "key": file_name} if likely to need more than just the key in future tests. 
+
+@pytest.fixture(scope='function')
+def mock_df(): 
+    d = {
+    "Name": [                        
+        "Alice",          # normal
+        "Bob",            # normal
+        "",               # empty string
+        None,             # missing
+        "Charlie",        # normal
+        "Δelta",          # unicode
+        123,              # non-string numeric
+        "Eve",            # normal
+    ],
+
+    "Email": [
+        "alice@example.com",
+        "bob_at_example.com",  # malformed
+        "",                    # empty
+        None,                  # missing
+        "charlie@ex.co.uk",
+        42,                    # non-string numeric
+        np.nan,                # NaN
+        "eve+test@example.com",
+    ],
+
+    "Phone": [
+        "+1-555-111-2222",
+        "5551113333",
+        "",                 # empty
+        None,
+        0,                  # numeric zero
+        False,              # boolean
+        np.nan,
+        "(555) 999-0000",
+    ],
+
+    "DOB": [
+        "1990-01-01",
+        "1985-02-03",
+        None,
+        pd.NaT,             # pandas missing datetime
+        "01/05/1975",
+        "1970-12-31",
+        "2000-07-07",
+        "1999-09-09",
+    ],
+    "Notes": [
+        "ok",
+        "",
+        "legacy",
+        None,
+        "no action",
+        "special chars: ♥",
+        "large text " * 2,
+        "final row",
+    ],
+}
+    return pd.DataFrame(d)
+ 

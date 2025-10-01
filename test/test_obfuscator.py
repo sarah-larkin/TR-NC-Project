@@ -62,31 +62,38 @@ class TestGetCSV:
         # S3.Client.exceptions.InvalidObjectState"""
 
 class TestObfuscateCSV: 
-    def test_obfuscate_csv(self): 
-        #test for purity 
+    """ fields: ["Name", "Email", "Phone", "DOB", "Notes"]""" #TODO: delete when done 
+    def test_new_object_returned(self, mock_df):
+        """ testing purity - checking new obejct is return"""
+        result = obfuscate_csv(mock_df, ["Email", "Phone", "DOB"] )
+        assert isinstance(result, pd.DataFrame)
+        assert result is not mock_df
+
+    def test_original_data_is_not_mutated(self, mock_df):
+        """ testing puring - checking original data has not been mutated"""
+        copy_of_original = deepcopy(mock_df)
+        result = obfuscate_csv(mock_df, ["Email", "Phone", "DOB"])
+        assert isinstance(result, pd.DataFrame)
+        pd.testing.assert_frame_equal(mock_df, copy_of_original)
+    
+    def test_sensitive_date_is_replaced_by_xxx_in_one_column(self, mock_df): 
+        result = obfuscate_csv(mock_df, ["Email", "Phone", "DOB"])
+        assert isinstance(result, pd.DataFrame)
+        assert list(result.loc[0]) == ["Alice", 'xxx', 'xxx', 'xxx', "ok"]
+        assert list(result.loc[1]) == ["Bob", 'xxx', 'xxx', 'xxx',""]
+        assert list(result.loc[7]) == ["Eve", 'xxx', 'xxx', 'xxx', "final row"]
+    
+    def test_sensitive_date_is_replaced_by_xxx_in_multiple_columns(self): 
         pass
-    def test_new_object_returned(self):
-        d = {'col1': [1, 2], 'col2': [3, 4]}
-        data = pd.DataFrame(d)
-        fields = ['col1', 'col2']
-        
-        result = obfuscate_csv(data, fields)
 
-        assert isinstance(result, pd.DataFrame)
-        assert result is not data
+    def test_returns_error_if_column_does_not_exist(self): 
+        pass
 
-    def test_original_data_is_not_mutated(self):
-        d = {'col1': [1, 2], 'col2': [3, 4]}
-        data = pd.DataFrame(d)
-        fields = ['col1', 'col2']
+    def test_returns_SOMETHING_if_data_type_is_not_str(self):
+        pass
 
-        copy_of_original = deepcopy(data)
-        
-        result = obfuscate_csv(data, fields)
-
-        assert isinstance(result, pd.DataFrame)
-        pd.testing.assert_frame_equal(data, copy_of_original)
-
+    def test_returns_SOMETHING_if_df_is_empty(self): 
+        pass
 
 
 

@@ -12,10 +12,8 @@ logger.setLevel(logging.DEBUG) #alter level if needed [debug, info, warning, err
 s3 = boto3.client('s3')
 
 #Helper functions 
-def get_csv(bucket, file_name, s3): 
-    """
-    function summary: 
-    accesses the specified S3 bucket and retrieve the csv file. 
+def get_csv(bucket:str, file_name:str, s3:object) -> pd.DataFrame: 
+    """access the specified S3 bucket and retrieve the csv file. 
 
     args: 
     bucket - retrieved from json passed to obfuscator()
@@ -35,7 +33,7 @@ def get_csv(bucket, file_name, s3):
         
         df = pd.read_csv(csv_file_object['Body'])
         return df
-    
+
     except pd.errors.EmptyDataError as error: 
         logging.error('the file you are trying to retrieve does not contain any data')
         raise error
@@ -43,27 +41,34 @@ def get_csv(bucket, file_name, s3):
         logging.error('the file does not exist, check filename')
         #TODO: what if it is an InvalidObjectState exception?
         raise error
-     
-
-# S3.Client.exceptions.NoSuchKey
-# S3.Client.exceptions.InvalidObjectState
+    # S3.Client.exceptions.NoSuchKey
+    # S3.Client.exceptions.InvalidObjectState
 
     
-def obfuscate_csv(data:bytes, fields:list) -> bytes:   #TODO: use this style for all? 
-    """
-    function summary: 
-    Pure function taking the data from the csv, and obfuscating the columns with the 
-    specified headings (fields). 
+def obfuscate_csv(data:pd.DataFrame, fields:list) -> bytes:   #TODO: use this style for all? 
+    """obfuscating the values under the headings defined in fields list.  
 
     args: 
-    data - bytes (returned from get_csv()) #TODO OR Panda dataframe???
+    data - pd.DataFrame (returned from get_csv()) 
     fields - list (from JSON passed to obfuscator())    
 
     returns:
     new csv bytes, exact copy of original but with relevant columns obfuscated.  
     """
-    
-    pass
+
+    df = data.copy()
+
+    for heading in fields: 
+        df[heading] = "xxx"
+
+    return df
+
+    #df[heading] = df[heading].str.replace(
+
+    #obf_df = pd.DataFrame({heading: "xxx"})
+    #df.update(obf_Df)
+
+    #if cell empty --> "not data" (pd.fillna("no data"))?? 
 
 
 #Primary function 
@@ -97,11 +102,15 @@ def obfuscator(input_json):
     #define file_name 
     #define fields 
 
+    bucket = input_json["file_to_obfuscate"]
+    file_name = 
     data = get_csv(bucket, file_name)
 
-    obfuscated_bytes = obfuscate_csv(data, fields)
+    obfuscated_df = obfuscate_csv(data, fields)
 
-    #return obfuscated_bytes
+    #convert df into bytestream? 
+
+    #return bytestream
 
     pass
 
