@@ -13,7 +13,7 @@ logger.setLevel(logging.DEBUG) #alter level if needed [debug, info, warning, err
 s3 = boto3.client('s3')
 
 #Helper functions 
-def get_csv(bucket:str, file_name:str, s3:object) -> pd.DataFrame: 
+def get_csv(bucket:str, key:str, s3:object) -> pd.DataFrame: 
     """access the specified S3 bucket and retrieve the csv file. 
 
     args: 
@@ -29,9 +29,8 @@ def get_csv(bucket:str, file_name:str, s3:object) -> pd.DataFrame:
     Raises Pandas EmptyDataError if the file being retrieved is empty. 
     """
     try:
-        csv_file_object = s3.get_object(Bucket=bucket, Key=file_name)   #dict 
+        csv_file_object = s3.get_object(Bucket=bucket, Key=key)   # -> dict        
         logging.info('csv file successfully retrieved')
-        
         df = pd.read_csv(csv_file_object['Body'])
         return df
 
@@ -98,30 +97,34 @@ def obfuscator(input_json:json) -> bytes:
         #fields valid (headings)
         #fields type = list of strings 
         #both elements present 
+    
+    #TODO: try/except exception handling - check json exceptions 
+    if input_json is not type(json):
+        logging.error("input invalid") 
+        return "input invalid"
+    else: 
+        input = json.loads(input_json) 
+        url = input["file_to_obfuscate"]
 
-    doc_info = urlparse(input_json)
+        o = urlparse(url)
 
-    bucket = doc_info.netloc 
-    print(bucket)
+        bucket = o.netloc 
+        key = o.path.lstrip('/') #file_path/file_name (with first / removed)
+        file_name = key.split('/')[-1]
+        file_type = file_name.split('.')[-1]
 
-    key = doc_info.path #file path
-    print(key)
-
-
-    #bucket = input_json["file_to_obfuscate"] #update
-    file_name = input_json["file_to_obfuscate"]#update
-    fields = input_json["pii_fields"]
-
-    """setup with extension in mind"""
-    #if file_name[-4:] == ".csv": 
-        #data = get_csv(bucket, file_name)
-        #obfuscated_df = obfuscate_data(data, fields)
-        #csv_output = obfuscated_df.to_csv()
-        #return csv_output 
+        fields = input["pii_fields"]
+    
+        """setup with extension in mind"""
+        if file_type == "csv": 
+            data = get_csv(bucket, file_name, s3)
+            obfuscated_df = obfuscate_data(data, fields)
+            csv_output = obfuscated_df.to_csv(index=False) #TODO: check this! 
+            return csv_output.encode("utf-8") #TODO: check this! 
 
 
     #return bytestream
-    pass
+    
 
 
 
@@ -134,8 +137,8 @@ if (__name__ == "__main__"):
 
 if (__name__ == "__main__"):
     #get_csv(bucket='tr-nc-test-source-files', file_name='Titanic-Dataset.csv', s3=s3)
-    obfuscator("{"file_to_obfuscate": "s3://my_ingestion_bucket/new_data/file1.csv","pii_fields": ["Name", "Email", "Phone", "DOB"]}")
-
+    
+    pass
 
 
 #TODO: confirm security, PEP8 compliance

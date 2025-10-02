@@ -41,7 +41,7 @@ def mock_csv_file(s3_client, mock_bucket):
                       Body= b'Name,Email,Phone,DOB,Notes\nAlice,alice@example.com,+1-555-111-2222,1990-01-01,ok\nBob,bob_at_example.com,5551113333,1985-02-03\nCharlie,charlie@ex.co.uk,0,01/05/1975,no action') #byte string 
     return file_name
 #consider returning a dict with {"bucket": mock_bucket, "key": file_name} if likely to need more than just the key in future tests. 
-#TODO: check if need to include more edge cases here in the body added to the csv
+#TODO: check if need to include more edge cases here in the body added to the csv (like in mock_df)
 
 @pytest.fixture(scope='function')
 def mock_df(): 

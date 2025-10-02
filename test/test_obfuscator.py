@@ -6,6 +6,7 @@ import pytest
 import pandas as pd
 from botocore.exceptions import ClientError
 from copy import deepcopy
+import numpy as np
 
 """
 fixtures can be found in test/conftest.py file mocking:
@@ -13,6 +14,7 @@ s3_client,
 mock_bucket, 
 mock_csv_file 
 mock_df 
+mock_csv_json
 """
 
 class TestGetCSV: 
@@ -22,10 +24,11 @@ class TestGetCSV:
     
     def test_returns_content_from_the_named_csv_file(self, mock_bucket, mock_csv_file, s3_client):
         df = get_csv(mock_bucket, mock_csv_file, s3_client) 
-        assert list(df.columns) == ['name', 'address']  #df.keys() also works 
-        assert list(df.loc[0]) == ['PersonA', 'Earth']
-        assert list(df.loc[1]) == ['PersonB', 'Mars']
-    
+        assert list(df.columns) == ["Name", "Email", "Phone", "DOB", "Notes"] #df.keys() also works 
+        assert list(df.loc[0]) == ["Alice","alice@example.com","+1-555-111-2222","1990-01-01","ok"]
+        assert list(df.loc[1]) == ["Bob", "bob_at_example.com", "5551113333", "1985-02-03", np.nan]
+        assert list(df.loc[2]) == ["Charlie", "charlie@ex.co.uk", "0", "01/05/1975", "no action"]
+     
     def test_get_csv_raises_exception_if_csv_is_empty(self, mock_bucket, s3_client): 
         empty_file = 'empty_file.csv'
         s3_client.put_object(Bucket=mock_bucket,  
@@ -109,7 +112,7 @@ class TestObfuscateData:
         assert list(result.loc[6]) == ["xxx", "xxx", "xxx", "xxx", "large text " * 2]
 
 
-        """mock data in list format in case needed for future tests"""
+        """mock data in list format in case needed for future tests""" #TODO: delete when done
         # assert list(result.loc[2]) == ["", "", "", None, "legacy"]
         # assert list(result.loc[3]) == [None, None, None, pd.NaT, None]
         # assert list(result.loc[4]) == ["Charlie", "charlie@ex.co.uk", 0, "01/05/1975", "no action"]
@@ -119,6 +122,17 @@ class TestObfuscateData:
 class TestObfuscator: 
     #check bucket name is valid and exists
     #check file name is valid and exists 
-    def test_csv_file_returned_when_csv_inputted(self, mock_csv_json): 
-        result = obfuscator(mock_csv_json)
-        assert result.endswith(".csv")
+    def test_csv_file_returns_bytestream(self, mock_csv_json): 
+        pass
+    def test_returns_error_msg_if_invalid_json_passed(self): 
+        result = obfuscator('{"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv", "pii_fields": ["Name", "Email", "Phone", "DOB"]') #no closing bracket
+        assert result == "input invalid"
+    def test_returns_error_msg_if_invalid_URL(self): 
+        result = obfuscator('{"file_to_obfuscate": "", "pii_fields": ["Name", "Email", "Phone", "DOB"]}')
+        assert result == "input invalid" #TODO:update how this is handled 
+    def test_valid_s3_url(self): 
+        pass
+    def test_raises_error_if_not_accepted_file_type(self): #(ie. not [csv, (json, parquet)])
+        pass
+    def test_raises_error_if_no_PII_headings_specified(self): 
+        pass
