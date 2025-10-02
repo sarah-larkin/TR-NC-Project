@@ -18,7 +18,7 @@ def aws_credentials():
 @pytest.fixture(scope='module')  #TODO: update to yield_fixture??
 def s3_client(aws_credentials):
     """mocked s3 client"""
-    with mock_aws():      #could also be mock_aws
+    with mock_aws():     
         yield boto3.client('s3', region_name='eu-west-2') #TODO:checkout session instead of hard coding region
 
 @pytest.fixture(scope='module')
@@ -33,13 +33,15 @@ def mock_bucket(s3_client):
 
 @pytest.fixture(scope='module')
 def mock_csv_file(s3_client, mock_bucket): 
-    """mocked csv file"""
+    """mocked csv file
+    (additional edge cases added to mock_df below)"""
     file_name = 'test_file.csv'
     s3_client.put_object(Bucket=mock_bucket,  #consider upload_fileobj for replicating larger file size
                       Key=file_name,
-                      Body=b'name,address\nPersonA,Earth\nPersonB,Mars') #byte string 
+                      Body= b'Name,Email,Phone,DOB,Notes\nAlice,alice@example.com,+1-555-111-2222,1990-01-01,ok\nBob,bob_at_example.com,5551113333,1985-02-03\nCharlie,charlie@ex.co.uk,0,01/05/1975,no action') #byte string 
     return file_name
 #consider returning a dict with {"bucket": mock_bucket, "key": file_name} if likely to need more than just the key in future tests. 
+#TODO: check if need to include more edge cases here in the body added to the csv
 
 @pytest.fixture(scope='function')
 def mock_df(): 
@@ -104,8 +106,5 @@ def mock_df():
 @pytest.fixture(scope='function') 
 def mock_csv_json(): 
     """mocked input json string for a csv file"""
-    mock_csv_json = {
-        "file_to_obfuscate": "s3://my_ingestion_bucket/new_data/file1.csv", 
-        "pii_fields": ["Name", "Email", "Phone", "DOB"]
-    }
+    mock_csv_json = '{"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv", "pii_fields": ["Name", "Email", "Phone", "DOB"]}'
     return mock_csv_json
