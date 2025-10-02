@@ -101,3 +101,11 @@ def mock_df():
 }
     return pd.DataFrame(d)
  
+@pytest.fixture(scope='function') 
+def mock_csv_json(): 
+    """mocked input json string for a csv file"""
+    mock_csv_json = {
+        "file_to_obfuscate": "s3://my_ingestion_bucket/new_data/file1.csv", 
+        "pii_fields": ["Name", "Email", "Phone", "DOB"]
+    }
+    return mock_csv_json

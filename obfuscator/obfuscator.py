@@ -2,6 +2,7 @@ import json
 import csv
 import logging
 import pandas as pd
+from urllib.parse import urlparse
 
 import boto3
 from botocore.exceptions import ClientError
@@ -71,7 +72,7 @@ def obfuscate_data(data:pd.DataFrame, fields:list) -> bytes:  #TODO: confirm if 
 
 
 #Primary function 
-def obfuscator(input_json): 
+def obfuscator(input_json:json) -> bytes: 
     """ 
     function summary:
     produce a copy of the csv file specified in the input_json (location of file/pii fields 
@@ -98,7 +99,16 @@ def obfuscator(input_json):
         #fields type = list of strings 
         #both elements present 
 
-    bucket = input_json["file_to_obfuscate"] #update
+    doc_info = urlparse(input_json)
+
+    bucket = doc_info.netloc 
+    print(bucket)
+
+    key = doc_info.path #file path
+    print(key)
+
+
+    #bucket = input_json["file_to_obfuscate"] #update
     file_name = input_json["file_to_obfuscate"]#update
     fields = input_json["pii_fields"]
 
@@ -123,8 +133,8 @@ if (__name__ == "__main__"):
 
 
 if (__name__ == "__main__"):
-    get_csv(bucket='tr-nc-test-source-files', file_name='Titanic-Dataset.csv', s3=s3)
-
+    #get_csv(bucket='tr-nc-test-source-files', file_name='Titanic-Dataset.csv', s3=s3)
+    obfuscator("{"file_to_obfuscate": "s3://my_ingestion_bucket/new_data/file1.csv","pii_fields": ["Name", "Email", "Phone", "DOB"]}")
 
 
 

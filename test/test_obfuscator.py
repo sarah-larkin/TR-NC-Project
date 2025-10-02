@@ -67,7 +67,7 @@ class TestGetCSV:
         # S3.Client.exceptions.NoSuchKey
         # S3.Client.exceptions.InvalidObjectState"""
 
-class TestObfuscateCSV: 
+class TestObfuscateData: 
     """ fields: ["Name", "Email", "Phone", "DOB", "Notes"]""" #TODO: delete when done 
     def test_new_object_returned(self, mock_df):
         """ testing purity - checking new obejct is return"""
@@ -119,5 +119,6 @@ class TestObfuscateCSV:
 class TestObfuscator: 
     #check bucket name is valid and exists
     #check file name is valid and exists 
-    def test_obfuscator(self): 
-        pass
+    def test_csv_file_returned_when_csv_inputted(self, mock_csv_json): 
+        result = obfuscator(mock_csv_json)
+        assert result.endswith(".csv")
