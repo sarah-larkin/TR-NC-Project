@@ -7,6 +7,8 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
 
+#TODO: removing and print statements used for testing 
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG) #alter level if needed [debug, info, warning, error, critical]
 
@@ -32,6 +34,7 @@ def get_csv(bucket:str, key:str, s3:object) -> pd.DataFrame:
         csv_file_object = s3.get_object(Bucket=bucket, Key=key)   # -> dict        
         logging.info('csv file successfully retrieved')
         df = pd.read_csv(csv_file_object['Body'])
+        #print(df) --> df correct 
         return df
 
     except pd.errors.EmptyDataError as error: 
@@ -66,7 +69,7 @@ def obfuscate_data(data:pd.DataFrame, fields:list) -> bytes:  #TODO: confirm if 
         #TODO: check how to specify specific fields within the pd and put in the warning
         else: 
             df[heading] = "xxx"
-
+    #print(df) --> df correct
     return df
 
 
@@ -99,46 +102,56 @@ def obfuscator(input_json:json) -> bytes:
         #both elements present 
     
     #TODO: try/except exception handling - check json exceptions 
-    if input_json is not type(json):
-        logging.error("input invalid") 
-        return "input invalid"
-    else: 
-        input = json.loads(input_json) 
-        url = input["file_to_obfuscate"]
+    # if input_json is not type(json):
+    #     logging.error("input invalid") 
+    #     print("input invalid")
+    #     return "input invalid"
+    # else: 
+    input = json.loads(input_json) 
+    url = input["file_to_obfuscate"]
+    #print(url) --> url correct 
 
-        o = urlparse(url)
+    o = urlparse(url)
 
-        bucket = o.netloc 
-        key = o.path.lstrip('/') #file_path/file_name (with first / removed)
-        file_name = key.split('/')[-1]
-        file_type = file_name.split('.')[-1]
+    bucket = o.netloc 
+    key = o.path.lstrip('/') #file_path/file_name (with first / removed)
+    file_name = key.split('/')[-1]
+    file_type = file_name.split('.')[-1]
 
-        fields = input["pii_fields"]
-    
-        """setup with extension in mind"""
-        if file_type == "csv": 
-            data = get_csv(bucket, file_name, s3)
-            obfuscated_df = obfuscate_data(data, fields)
-            csv_output = obfuscated_df.to_csv(index=False) #TODO: check this! 
-            return csv_output.encode("utf-8") #TODO: check this! 
+    fields = input["pii_fields"]
+
+    """setup with extension in mind"""
+    if file_type == "csv": 
+        data = get_csv(bucket, file_name, s3)
+        obfuscated_df = obfuscate_data(data, fields)
+        csv_output = obfuscated_df.to_csv("obfuscated-titanic-data.csv", index=False) #TODO: check this! 
+        #print(type(csv_output)) --> str
+        #print(csv_output) --> all prints ok 891 rows
+        #print(json.loads(csv_output)) --> DOES NOT WORK!! 
+        #print(csv_output.encode("utf-8")) --> AttributeError: 'NoneType' object has no attribute 'encode'
+        
+        return csv_output #TODO: check this! 
 
 
     #return bytestream
     
-
-
+# def return_csv(): 
+#     """test func only"""
+#     output = obfuscator({"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]})
+#     df = pd.DataFrame(output)
+#     output_file = df.to_csv("Obfuscated-Titanic-Dataset.csv", Index=False)
+#     return output_file
 
 
 
 if (__name__ == "__main__"):
-    pass
-#to run script as is and for testing. 
-
-
-if (__name__ == "__main__"):
-    #get_csv(bucket='tr-nc-test-source-files', file_name='Titanic-Dataset.csv', s3=s3)
+    #get_csv(bucket='tr-nc-test-source-files', key='Titanic-Dataset.csv', s3=s3)
     
-    pass
+    # data = get_csv(bucket='tr-nc-test-source-files', key='Titanic-Dataset.csv', s3=s3)
+    # fields = ["Name", "Sex", "Age"]
+    # obfuscate_data(data, fields)
+
+    #obfuscator(json.dumps({"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]}))
 
 
 #TODO: confirm security, PEP8 compliance
