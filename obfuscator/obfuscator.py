@@ -1,11 +1,10 @@
 import json
-import csv
 import logging
 import pandas as pd
 from urllib.parse import urlparse
 
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, ParamValidationError
 
 #TODO: removing and print statements used for testing 
 
@@ -107,40 +106,47 @@ def obfuscator(input_json:json) -> bytes:
     #     print("input invalid")
     #     return "input invalid"
     # else: 
-    input = json.loads(input_json) 
-    url = input["file_to_obfuscate"]
-    #print(url) --> url correct 
+    try: 
+        input = json.loads(input_json) 
+        url = input["file_to_obfuscate"]
+    
+        o = urlparse(url)
 
-    o = urlparse(url)
+        bucket = o.netloc 
+        key = o.path.lstrip('/') #file_path/file_name (with first / removed)
+        file_name = key.split('/')[-1]
+        file_type = file_name.split('.')[-1]
 
-    bucket = o.netloc 
-    key = o.path.lstrip('/') #file_path/file_name (with first / removed)
-    file_name = key.split('/')[-1]
-    file_type = file_name.split('.')[-1]
+        fields = input["pii_fields"]
 
-    fields = input["pii_fields"]
+    except(ValueError) as error:
+        logging.error("invalid JSON")
+        raise error
+    except (ParamValidationError) as error: 
+        logging.error("invalid URL")
+        raise error
+    except(TypeError) as error: 
+        logging.error("invalid input") #if url or list are null
+        raise error
+
+
 
     """setup with extension in mind"""
+
     if file_type == "csv": 
         data = get_csv(bucket, file_name, s3)
         obfuscated_df = obfuscate_data(data, fields)
-        csv_output = obfuscated_df.to_csv("obfuscated-titanic-data.csv", index=False) #TODO: check this! 
-        #print(type(csv_output)) --> str
-        #print(csv_output) --> all prints ok 891 rows
-        #print(json.loads(csv_output)) --> DOES NOT WORK!! 
-        #print(csv_output.encode("utf-8")) --> AttributeError: 'NoneType' object has no attribute 'encode'
-        
-        return csv_output #TODO: check this! 
-
-
-    #return bytestream
+        #new_file_name = f"Obfuscated-{file_name}"
+        csv_output = obfuscated_df.to_csv(index=False).encode() #encoded to return bytes (cannot have file location else is NoneType) 
+        return csv_output 
+    #if file_type == "json":
+    else: 
+        logging.error("invalid document type")
+        return "invalid document type"
     
-# def return_csv(): 
-#     """test func only"""
-#     output = obfuscator({"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]})
-#     df = pd.DataFrame(output)
-#     output_file = df.to_csv("Obfuscated-Titanic-Dataset.csv", Index=False)
-#     return output_file
+    
+
+
 
 
 
@@ -151,7 +157,7 @@ if (__name__ == "__main__"):
     # fields = ["Name", "Sex", "Age"]
     # obfuscate_data(data, fields)
 
-    #obfuscator(json.dumps({"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]}))
-
+    obfuscator(json.dumps({"file_to_obfuscate": "", "pii_fields": ["Name", "Sex", "Age"]}))
+#"s3://tr-nc-test-source-files/Titanic-Dataset.csv"
 
 #TODO: confirm security, PEP8 compliance
