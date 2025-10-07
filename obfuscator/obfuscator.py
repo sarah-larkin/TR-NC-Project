@@ -58,35 +58,32 @@ def validate_input_json(input_json: str) -> dict:  # return input json is valid 
   
     logging.info("Valid JSON and valid fields")
     return data
+#TODO: complete last 2 tests for this
 
-
-def extract_s3_details(verified_input: dict) -> str:  # TODO: str output? 
+def extract_s3_details(verified_input: dict) -> dict: 
     try:
-        input = json.loads(verified_input)
-        url = input["file_to_obfuscate"]
-
+        url = verified_input["file_to_obfuscate"]
         o = urlparse(url)
-
-        bucket = o.netloc
-        key = o.path.lstrip("/")  # file_path/file_name (with first / removed)
-        file_name = key.split("/")[-1]
-        file_type = file_name.split(".")[-1]
-
-
-    except ParamValidationError as error:
-        logging.error("invalid URL")
-        raise error
+    
+    except ParamValidationError as error:  # botocore exception
+            logging.error("invalid URL")
+            raise error
+    
     except TypeError as error:
         logging.error("invalid input")  # if url or list are null
         raise error
     
+    bucket = o.netloc
+    key = o.path.lstrip("/")  # file_path/file_name (with first / removed)
+    file_name = key.split("/")[-1]
+    file_type = file_name.split(".")[-1]
+    
     # file location valid
     # file type = csv  - if extended one of the valid file types handled
-    pass # TODO: return a dict of all the values that may be needed elsewhere?? 
+    return {"Bucket" : bucket, "Key": key, "File_Name": file_name, "File_Type": file_type}
 
-def extract_fields_to_alter(input_json): 
+def extract_fields_to_alter(verified_input: dict): 
     try: 
-        input = json.loads(input_json)
         fields = input["pii_fields"]
 
     except TypeError as error:
@@ -201,11 +198,12 @@ def obfuscator(input_json: json) -> bytes:
 
     exceptions: # TODO: list exceptions
     """
+    # TODO: update function to incorporate all helper funcs and return bytes 
     validate_input_json()
     extract_s3_details()
     extract_fields_to_alter()
     get_csv()  # or get_file() if updated
-    convert_file_to_df()
+    convert_file_to_df()  # TODO: this where file type is handled? 
     obfuscate_data()
  
     """setup with extension in mind"""

@@ -1,4 +1,4 @@
-from obfuscator.obfuscator import get_csv, obfuscate_data, obfuscator, validate_input_json
+from obfuscator.obfuscator import extract_s3_details, extract_fields_to_alter, get_csv, obfuscate_data, obfuscator, validate_input_json
 import pytest
 import pandas as pd
 from botocore.exceptions import ClientError, ParamValidationError
@@ -98,15 +98,79 @@ class TestValidateJSON:
     
 
 class TestExtractS3Details:
-    def test(self):
-        pass
+    def test_s3_details_returns_dict(self, mock_dict_for_csv_file): 
+        result = extract_s3_details(mock_dict_for_csv_file)
+        assert isinstance(result, dict)
+        assert result == {"Bucket" : "test_bucket_TR_NC", "Key": "test_file.csv", "File_Name" : "test_file.csv", "File_Type": "csv"}
 
+    def test_returns_error_msg_if_invalid_URL(self):
+        with pytest.raises(ParamValidationError):
+            extract_s3_details(
+                '{"file_to_obfuscate": '
+                '"test_bucket_TR_NC/test_file.csv",'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
+            )
+            # missing s3://
+
+    def test_returns_error_msg_if_URL_null(self):
+        with pytest.raises(TypeError):
+            extract_s3_details(
+                '{"file_to_obfuscate": null,'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
+            )
+
+    @pytest.mark.skip
+    def test_returns_error_msg_if_URL_is_empty_string(self):
+        with pytest.raises(ParamValidationError):
+            extract_s3_details(
+                '{"file_to_obfuscate": "",'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
+            )
+
+    def test_raises_error_if_not_accepted_file_type(self, mock_json_for_csv_file):
+        # (ie. not [csv, (json, parquet)])
+        # accepted_types = ["csv"]
+        # o = urlparse("test_bucket_TR_NC/test_file.pdf") #pdf type
+        # key = o.path.lstrip('/') #file_path/file_name (with first / removed)
+        # file_name = key.split('/')[-1]
+        # file_type = file_name.split('.')[-1]
+        # assert file_type not in accepted_types
+        assert (
+            extract_s3_details(
+                '{"file_to_obfuscate":'
+                '"s3://test_bucket_TR_NC/test_file.pdf",'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
+            )
+            == "invalid document type"
+        )
+        assert (
+            extract_s3_details(
+                '{"file_to_obfuscate":'
+                '"s3://test_bucket_TR_NC/test_file.txt",'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
+            )
+            == "invalid document type"
+        )
+        # TODO: handle this better?
 
 class TestExtractFieldsToAlter:
-    def test(self): 
-        pass
+    def test_raises_error_if_PII_is_null(self):
+        with pytest.raises(TypeError):
+            extract_fields_to_alter(
+                '{"file_to_obfuscate":'
+                '"s3://test_bucket_TR_NC/test_file.csv",'
+                '"pii_fields": null}'
+            )
 
-@pytest.mark.skip
+    def test_raises_error_if_no_PII_headings_list_empty(self):
+        with pytest.raises(ValueError):
+            extract_fields_to_alter(
+                '{"file_to_obfuscate":'
+                '"s3://test_bucket_TR_NC/test_file.csv",'
+                '"pii_fields": []}'
+            )
+
+
 class TestGetCSV:
     def test_returns_df(self, mock_bucket, mock_csv_file, s3_client):
         response = get_csv(mock_bucket, mock_csv_file, s3_client)
@@ -185,7 +249,11 @@ class TestGetCSV:
         # S3.Client.exceptions.NoSuchKey
         # S3.Client.exceptions.InvalidObjectState"""
 
-@pytest.mark.skip
+class TestConvertFileToDF: 
+    def test(self): 
+        pass
+
+
 class TestObfuscateData:
     """fields: ["Name", "Email", "Phone", "DOB", "Notes"]"""
 
@@ -242,6 +310,8 @@ class TestObfuscateData:
         assert list(result.loc[5]) == ["xxx", "xxx", "xxx", "xxx", "special chars: ♥"]
         assert list(result.loc[6]) == ["xxx", "xxx", "xxx", "xxx", "large text " * 2]
 
+        # TODO: log when incorrect data type present?
+
         """mock data in list format in case needed for future tests"""
         # TODO: delete when done
         # assert list(result.loc[2]) == ["", "", "", None, "legacy"]
@@ -253,82 +323,14 @@ class TestObfuscateData:
         # assert list(result.loc[6]) == [123, np.nan, np.nan, "2000-07-07",
         # "large text " * 2]
 
-@pytest.mark.skip
+
 class TestObfuscator:
     # check bucket name is valid and exists
     # check file name is valid and exists
 
     def test_csv_file_returns_bytestream(self, mock_json_for_csv_file):
         assert type(obfuscator(mock_json_for_csv_file)) == bytes
-
-   
-
-    def test_returns_error_msg_if_invalid_URL(self):
-        with pytest.raises(ParamValidationError):
-            obfuscator(
-                '{"file_to_obfuscate": '
-                '"test_bucket_TR_NC/test_file.csv",'
-                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
-            )
-            # missing s3://
-
-    def test_returns_error_msg_if_URL_null(self):
-        with pytest.raises(TypeError):
-            obfuscator(
-                '{"file_to_obfuscate": null,'
-                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
-            )
-
-    @pytest.mark.skip
-    def test_returns_error_msg_if_URL_is_empty_string(self):
-        with pytest.raises(ParamValidationError):
-            obfuscator(
-                '{"file_to_obfuscate": "",'
-                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
-            )
-
-    def test_raises_error_if_not_accepted_file_type(self, mock_json_for_csv_file):
-        # (ie. not [csv, (json, parquet)])
-        # accepted_types = ["csv"]
-        # o = urlparse("test_bucket_TR_NC/test_file.pdf") #pdf type
-        # key = o.path.lstrip('/') #file_path/file_name (with first / removed)
-        # file_name = key.split('/')[-1]
-        # file_type = file_name.split('.')[-1]
-        # assert file_type not in accepted_types
-        assert (
-            obfuscator(
-                '{"file_to_obfuscate":'
-                '"s3://test_bucket_TR_NC/test_file.pdf",'
-                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
-            )
-            == "invalid document type"
-        )
-        assert (
-            obfuscator(
-                '{"file_to_obfuscate":'
-                '"s3://test_bucket_TR_NC/test_file.txt",'
-                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
-            )
-            == "invalid document type"
-        )
-        # TODO: handle this better?
-
-    def test_raises_error_if_PII_is_null(self):
-        with pytest.raises(TypeError):
-            obfuscator(
-                '{"file_to_obfuscate":'
-                '"s3://test_bucket_TR_NC/test_file.csv",'
-                '"pii_fields": null}'
-            )
-
-    @pytest.mark.skip
-    def test_raises_error_if_no_PII_headings_specified(self):
-        with pytest.raises(ValueError):
-            obfuscator(
-                '{"file_to_obfuscate":'
-                '"s3://test_bucket_TR_NC/test_file.csv",'
-                '"pii_fields": []}'
-            )
+    
 
 @pytest.mark.skip
 class General:
