@@ -9,37 +9,60 @@ from botocore.exceptions import ClientError, ParamValidationError
 # TODO: removing and print statements used for testing
 
 logger = logging.getLogger(__name__)
-#logger.setLevel(logging.DEBUG) --> setup in main/env?
+#logger.setLevel(logging.DEBUG) --> setup in main()/env? --> timestamp?
 # alter level if needed [debug, info, warning, error, critical]
 
 s3 = boto3.client("s3")
 
 # Helper functions
 
-def validate_input_json(input_json: json) -> bool:  # TODO: return bool? 
-    """confirm if json entered is valid
+def validate_input_json(input_json: str) -> dict:  # return input json is valid so can be used elsewhere
+    """validate JSON string and return parsed dict if valid.
 
     Args:
-        input_json (json): json string passed into initial function
+        input_json: json string passed into initial function
 
     Raises:
-        error: _description_  #TODO: add exceptions
+        ValueERror: Invalid JSON string
     """
     try:
-        input = json.loads(input_json)
-        # TODO: add logic here 
+        data = json.loads(input_json)
 
-    except ValueError as error:
-        logging.error("invalid JSON")
-        raise error
+    except ValueError as error:  # TODO: check
+        logging.warning("Invalid JSON")
+        raise ValueError("Invalid JSON")  #check
     
-    # validate JSON string
-    # both elements present
-    pass
+    if not isinstance(data, dict): 
+        logging.warning("JSON should be a dictionary")
+        raise ValueError("JSON should be a dictionary")
+    
+    # optional: 
+    permitted_keys = ["file_to_obfuscate", "pii_fields"]
+    keys = list(data.keys()) 
+    incorrect_keys = []
+    missing_keys = []
 
-def extract_s3_details(input_json: json) -> str:  # TODO: str output? 
+    for field in keys: 
+        if field not in permitted_keys:
+            incorrect_keys.append(field)
+    if incorrect_keys: 
+        logging.warning(f"Fields that are not permitted: {incorrect_keys}")
+        raise ValueError(f"Fields that are not permitted: {incorrect_keys}")
+
+    for field in permitted_keys: 
+        if field not in keys: 
+            missing_keys.append(field)
+    if missing_keys: 
+        logging.warning(f"Missing Fields: {missing_keys}")
+        raise ValueError(f"Missing Fields: {missing_keys}")
+  
+    logging.info("Valid JSON and valid fields")
+    return data
+
+
+def extract_s3_details(verified_input: dict) -> str:  # TODO: str output? 
     try:
-        input = json.loads(input_json)
+        input = json.loads(verified_input)
         url = input["file_to_obfuscate"]
 
         o = urlparse(url)
@@ -59,7 +82,7 @@ def extract_s3_details(input_json: json) -> str:  # TODO: str output?
     
     # file location valid
     # file type = csv  - if extended one of the valid file types handled
-    pass
+    pass # TODO: return a dict of all the values that may be needed elsewhere?? 
 
 def extract_fields_to_alter(input_json): 
     try: 
@@ -121,7 +144,7 @@ def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
 #     pass
 
 """ alternative"""
-def convert_file_to_df(): 
+def convert_file_to_df(): #pass in dict? 
     #draft not completed
     if file_type == 'csv': 
         df = pd.read_csv(file_object["Body"])
@@ -220,3 +243,4 @@ if __name__ == "__main__":
     pass
 
 # TODO: check logging levels: info -> sucess, warning -> recoverable issue, error -> critical failure! 
+# TODO: standardise exceptions and logging. raise in helper funcs and log in final func? 
