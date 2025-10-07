@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 # alter level if needed [debug, info, warning, error, critical]
 
-s3 = boto3.client('s3')
+s3 = boto3.client("s3")
 
 # Helper functions
 
@@ -34,17 +34,16 @@ def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
     Raises Pandas EmptyDataError if the file being retrieved is empty.
     """
     try:
-        csv_file_object = s3.get_object(Bucket=bucket, Key=key)   # -> dict
-        logging.info('csv file successfully retrieved')
-        df = pd.read_csv(csv_file_object['Body'])
+        csv_file_object = s3.get_object(Bucket=bucket, Key=key)  # -> dict
+        logging.info("csv file successfully retrieved")
+        df = pd.read_csv(csv_file_object["Body"])
         return df
 
     except pd.errors.EmptyDataError as error:
-        logging.error(
-            'the file you are trying to retrieve does not contain any data')
+        logging.error("the file you are trying to retrieve does not contain any data")
         raise error
     except ClientError as error:
-        logging.error('the file does not exist, check filename')
+        logging.error("the file does not exist, check filename")
         # TODO: what if it is an InvalidObjectState exception?
         raise error
     # S3.Client.exceptions.NoSuchKey
@@ -121,20 +120,20 @@ def obfuscator(input_json: json) -> bytes:
         o = urlparse(url)
 
         bucket = o.netloc
-        key = o.path.lstrip('/')  # file_path/file_name (with first / removed)
-        file_name = key.split('/')[-1]
-        file_type = file_name.split('.')[-1]
+        key = o.path.lstrip("/")  # file_path/file_name (with first / removed)
+        file_name = key.split("/")[-1]
+        file_type = file_name.split(".")[-1]
 
         fields = input["pii_fields"]
 
-    except (ValueError) as error:
+    except ValueError as error:
         logging.error("invalid JSON")
         raise error
-    except (ParamValidationError) as error:
+    except ParamValidationError as error:
         logging.error("invalid URL")
         raise error
-    except (TypeError) as error:
-        logging.error("invalid input")   # if url or list are null
+    except TypeError as error:
+        logging.error("invalid input")  # if url or list are null
         raise error
 
     """setup with extension in mind"""
@@ -152,7 +151,7 @@ def obfuscator(input_json: json) -> bytes:
         return "invalid document type"
 
 
-if (__name__ == "__main__"):
+if __name__ == "__main__":
     # get_csv(bucket='tr-nc-test-source-files',
     #         key='Titanic-Dataset.csv',
     #         s3=s3)
@@ -163,8 +162,9 @@ if (__name__ == "__main__"):
     # fields = ["Name", "Sex", "Age"]
     # obfuscate_data(data, fields)
 
-    # obfuscator(json.dumps({"file_to_obfuscate": "", 
-                        #    "pii_fields": ["Name", "Sex", "Age"]}))
+    # obfuscator(json.dumps({"file_to_obfuscate": "",
+    #    "pii_fields": ["Name", "Sex", "Age"]}))
     # "s3://tr-nc-test-source-files/Titanic-Dataset.csv"
-    
+
     # TODO: confirm security, PEP8 compliance.
+    pass

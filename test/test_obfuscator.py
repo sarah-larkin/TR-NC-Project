@@ -21,52 +21,59 @@ class TestGetCSV:
         assert isinstance(response, pd.DataFrame)
 
     def test_returns_content_from_the_named_csv_file(
-            self,
-            mock_bucket,
-            mock_csv_file,
-            s3_client):
+        self, mock_bucket, mock_csv_file, s3_client
+    ):
         df = get_csv(mock_bucket, mock_csv_file, s3_client)
         assert list(df.columns) == ["Name", "Email", "Phone", "DOB", "Notes"]
         # df.keys() also works
-        assert list(df.loc[0]) == ["Alice", "alice@example.com",
-                                   "+1-555-111-2222", "1990-01-01", "ok"]
-        assert list(df.loc[1]) == ["Bob", "bob_at_example.com", "5551113333",
-                                   "1985-02-03", np.nan]
-        assert list(df.loc[2]) == ["Charlie", "charlie@ex.co.uk", "0",
-                                   "01/05/1975", "no action"]
+        assert list(df.loc[0]) == [
+            "Alice",
+            "alice@example.com",
+            "+1-555-111-2222",
+            "1990-01-01",
+            "ok",
+        ]
+        assert list(df.loc[1]) == [
+            "Bob",
+            "bob_at_example.com",
+            "5551113333",
+            "1985-02-03",
+            np.nan,
+        ]
+        assert list(df.loc[2]) == [
+            "Charlie",
+            "charlie@ex.co.uk",
+            "0",
+            "01/05/1975",
+            "no action",
+        ]
 
-    def test_get_csv_raises_exception_if_csv_is_empty(self,
-                                                      mock_bucket,
-                                                      s3_client):
-        empty_file = 'empty_file.csv'
-        s3_client.put_object(Bucket=mock_bucket,
-                             Key=empty_file,
-                             Body=b'')
+    def test_get_csv_raises_exception_if_csv_is_empty(self, mock_bucket, s3_client):
+        empty_file = "empty_file.csv"
+        s3_client.put_object(Bucket=mock_bucket, Key=empty_file, Body=b"")
         with pytest.raises(pd.errors.EmptyDataError) as exc:
             get_csv(mock_bucket, empty_file, s3_client)
-        assert exc.value.args[0] == 'No columns to parse from file'
+        assert exc.value.args[0] == "No columns to parse from file"
         # TODO: check this out further,
         # error message could change with new versions
 
-    def test_raises_clienterror_if_file_does_not_exist(self,
-                                                       mock_bucket,
-                                                       s3_client):
+    def test_raises_clienterror_if_file_does_not_exist(self, mock_bucket, s3_client):
         """testing get_csv returns a client error
         for missing/incorrect file name"""
-        non_file = 'nonexistent_file.csv'
+        non_file = "nonexistent_file.csv"
         with pytest.raises(ClientError):
             get_csv(mock_bucket, non_file, s3_client)
 
-    def test_clienterror_error_code_when_file_does_not_exist(self,
-                                                             mock_bucket,
-                                                             s3_client):
+    def test_clienterror_error_code_when_file_does_not_exist(
+        self, mock_bucket, s3_client
+    ):
         """testing specific exception code is NoSuchKey
         for missing/incorrect file name"""
         incorrect_key = "incorrect_filename.csv"
         with pytest.raises(ClientError) as exc:
             get_csv(mock_bucket, incorrect_key, s3_client)
-        err = exc.value.response['Error']
-        assert err["Code"] == 'NoSuchKey'
+        err = exc.value.response["Error"]
+        assert err["Code"] == "NoSuchKey"
 
     # def test_file_type(self): #better name needed
     #     #not uploading JSON with .csv extension
@@ -88,17 +95,18 @@ class TestGetCSV:
 
 
 class TestObfuscateData:
-    """ fields: ["Name", "Email", "Phone", "DOB", "Notes"]"""
+    """fields: ["Name", "Email", "Phone", "DOB", "Notes"]"""
+
     # TODO: delete when done
 
     def test_new_object_returned(self, mock_df):
-        """ testing purity - checking new obejct is return"""
+        """testing purity - checking new obejct is return"""
         result = obfuscate_data(mock_df, ["Email", "Phone", "DOB"])
         assert isinstance(result, pd.DataFrame)
         assert result is not mock_df
 
     def test_original_data_is_not_mutated(self, mock_df):
-        """ testing puring - checking original data has not been mutated"""
+        """testing puring - checking original data has not been mutated"""
         copy_of_original = deepcopy(mock_df)
         result = obfuscate_data(mock_df, ["Email", "Phone", "DOB"])
         assert isinstance(result, pd.DataFrame)
@@ -107,20 +115,28 @@ class TestObfuscateData:
     def test_sensitive_data_is_replaced_by_xxx_in_one_column(self, mock_df):
         result = obfuscate_data(mock_df, ["Email"])
         assert isinstance(result, pd.DataFrame)
-        assert list(result.loc[0]) == ["Alice", 'xxx', "+1-555-111-2222",
-                                       "1990-01-01", "ok"]
-        assert list(result.loc[1]) == ["Bob", 'xxx', "5551113333",
-                                       "1985-02-03", ""]
-        assert list(result.loc[7]) == ["Eve", 'xxx', "(555) 999-0000",
-                                       "1999-09-09", "final row"]
+        assert list(result.loc[0]) == [
+            "Alice",
+            "xxx",
+            "+1-555-111-2222",
+            "1990-01-01",
+            "ok",
+        ]
+        assert list(result.loc[1]) == ["Bob", "xxx", "5551113333", "1985-02-03", ""]
+        assert list(result.loc[7]) == [
+            "Eve",
+            "xxx",
+            "(555) 999-0000",
+            "1999-09-09",
+            "final row",
+        ]
 
-    def test_sensitive_data_is_replaced_by_xxx_in_multiple_columns(self,
-                                                                   mock_df):
+    def test_sensitive_data_is_replaced_by_xxx_in_multiple_columns(self, mock_df):
         result = obfuscate_data(mock_df, ["Email", "Phone", "DOB"])
         assert isinstance(result, pd.DataFrame)
-        assert list(result.loc[0]) == ["Alice", 'xxx', 'xxx', 'xxx', "ok"]
-        assert list(result.loc[1]) == ["Bob", 'xxx', 'xxx', 'xxx', ""]
-        assert list(result.loc[7]) == ["Eve", 'xxx', 'xxx', 'xxx', "final row"]
+        assert list(result.loc[0]) == ["Alice", "xxx", "xxx", "xxx", "ok"]
+        assert list(result.loc[1]) == ["Bob", "xxx", "xxx", "xxx", ""]
+        assert list(result.loc[7]) == ["Eve", "xxx", "xxx", "xxx", "final row"]
 
     def test_returns_error_msg_if_column_does_not_exist(self, mock_df):
         result = obfuscate_data(mock_df, ["Address"])
@@ -131,10 +147,8 @@ class TestObfuscateData:
         assert list(result.loc[2]) == ["xxx", "xxx", "xxx", "xxx", "legacy"]
         assert list(result.loc[3]) == ["xxx", "xxx", "xxx", "xxx", None]
         assert list(result.loc[4]) == ["xxx", "xxx", "xxx", "xxx", "no action"]
-        assert list(result.loc[5]) == ["xxx", "xxx", "xxx", "xxx",
-                                       "special chars: ♥"]
-        assert list(result.loc[6]) == ["xxx", "xxx", "xxx", "xxx",
-                                       "large text " * 2]
+        assert list(result.loc[5]) == ["xxx", "xxx", "xxx", "xxx", "special chars: ♥"]
+        assert list(result.loc[6]) == ["xxx", "xxx", "xxx", "xxx", "large text " * 2]
 
         """mock data in list format in case needed for future tests"""
         # TODO: delete when done
@@ -157,31 +171,38 @@ class TestObfuscator:
 
     def test_returns_error_msg_if_invalid_json_passed(self):
         with pytest.raises(ValueError):
-            obfuscator('{"file_to_obfuscate":'
-                       '"s3://test_bucket_TR_NC/test_file.csv",'
-                       '"pii_fields": ["Name", "Email", "Phone", "DOB"]')
+            obfuscator(
+                '{"file_to_obfuscate":'
+                '"s3://test_bucket_TR_NC/test_file.csv",'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"]'
+            )
             # no closing bracket
 
     def test_returns_error_msg_if_invalid_URL(self):
         with pytest.raises(ParamValidationError):
-            obfuscator('{"file_to_obfuscate": '
-                       '"test_bucket_TR_NC/test_file.csv",'
-                       '"pii_fields": ["Name", "Email", "Phone", "DOB"]}')
+            obfuscator(
+                '{"file_to_obfuscate": '
+                '"test_bucket_TR_NC/test_file.csv",'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
+            )
             # missing s3://
 
     def test_returns_error_msg_if_URL_null(self):
         with pytest.raises(TypeError):
-            obfuscator('{"file_to_obfuscate": null,'
-                       '"pii_fields": ["Name", "Email", "Phone", "DOB"]}')
+            obfuscator(
+                '{"file_to_obfuscate": null,'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
+            )
 
     @pytest.mark.skip
     def test_returns_error_msg_if_URL_is_empty_string(self):
         with pytest.raises(ParamValidationError):
-            obfuscator('{"file_to_obfuscate": "",'
-                       '"pii_fields": ["Name", "Email", "Phone", "DOB"]}')
+            obfuscator(
+                '{"file_to_obfuscate": "",'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
+            )
 
-    def test_raises_error_if_not_accepted_file_type(self,
-                                                    mock_json_for_csv_file):
+    def test_raises_error_if_not_accepted_file_type(self, mock_json_for_csv_file):
         # (ie. not [csv, (json, parquet)])
         # accepted_types = ["csv"]
         # o = urlparse("test_bucket_TR_NC/test_file.pdf") #pdf type
@@ -189,28 +210,40 @@ class TestObfuscator:
         # file_name = key.split('/')[-1]
         # file_type = file_name.split('.')[-1]
         # assert file_type not in accepted_types
-        assert obfuscator('{"file_to_obfuscate":'
-                          '"s3://test_bucket_TR_NC/test_file.pdf",'
-                          '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
-                          ) == "invalid document type"
-        assert obfuscator('{"file_to_obfuscate":'
-                          '"s3://test_bucket_TR_NC/test_file.txt",'
-                          '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
-                          ) == "invalid document type"
+        assert (
+            obfuscator(
+                '{"file_to_obfuscate":'
+                '"s3://test_bucket_TR_NC/test_file.pdf",'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
+            )
+            == "invalid document type"
+        )
+        assert (
+            obfuscator(
+                '{"file_to_obfuscate":'
+                '"s3://test_bucket_TR_NC/test_file.txt",'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
+            )
+            == "invalid document type"
+        )
         # TODO: handle this better?
 
     def test_raises_error_if_PII_is_null(self):
         with pytest.raises(TypeError):
-            obfuscator('{"file_to_obfuscate":'
-                       '"s3://test_bucket_TR_NC/test_file.csv",'
-                       '"pii_fields": null}')
+            obfuscator(
+                '{"file_to_obfuscate":'
+                '"s3://test_bucket_TR_NC/test_file.csv",'
+                '"pii_fields": null}'
+            )
 
     @pytest.mark.skip
     def test_raises_error_if_no_PII_headings_specified(self):
         with pytest.raises(ValueError):
-            obfuscator('{"file_to_obfuscate":'
-                       '"s3://test_bucket_TR_NC/test_file.csv",'
-                       '"pii_fields": []}')
+            obfuscator(
+                '{"file_to_obfuscate":'
+                '"s3://test_bucket_TR_NC/test_file.csv",'
+                '"pii_fields": []}'
+            )
 
 
 class General:
