@@ -276,7 +276,7 @@ class TestObfuscator:
                 '"pii_fields": []}'
             )
 
-
+@pytest.mark.skip
 class General:
     def test_compatible_with_s3_put_object(self):
         pass  # necessary?
@@ -286,3 +286,6 @@ class General:
 
     def test_runtime_under_1m_with_file_up_to_1mb(self):
         pass  # necessary?
+
+# TODO: add tests for logging and error correctness
+# TODO: tests for edge cases such as invalid bucket, empty PII_fields, invalid headings 

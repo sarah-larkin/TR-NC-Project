@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError, ParamValidationError
 # TODO: removing and print statements used for testing
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+#logger.setLevel(logging.DEBUG) --> setup in main/env?
 # alter level if needed [debug, info, warning, error, critical]
 
 s3 = boto3.client("s3")
@@ -49,11 +49,7 @@ def extract_s3_details(input_json: json) -> str:  # TODO: str output?
         file_name = key.split("/")[-1]
         file_type = file_name.split(".")[-1]
 
-        fields = input["pii_fields"]
 
-    except ValueError as error:
-        logging.error("invalid JSON")
-        raise error
     except ParamValidationError as error:
         logging.error("invalid URL")
         raise error
@@ -66,15 +62,22 @@ def extract_s3_details(input_json: json) -> str:  # TODO: str output?
     pass
 
 def extract_fields_to_alter(input_json): 
-    input = json.loads(input_json)
-    fields = input["pii_fields"]
-    
-    # fields valid (headings)
-    # fields type = list of strings
+    try: 
+        input = json.loads(input_json)
+        fields = input["pii_fields"]
 
+    except TypeError as error:
+        logging.error("invalid input")  # if url or list are null
+        raise error
+    
+    # fields type = list of strings 
+    # not an empty list
+    # fields valid (headings)
     return fields
 
 def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
+    #TODO: could this be get_file? verify bucket/file exists and extract 
+    #would require another function to read file/access the data within
     """access the specified S3 bucket and retrieve the csv file.
 
     args:
@@ -91,7 +94,7 @@ def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
     Raises Pandas EmptyDataError if the file being retrieved is empty.
     """
     try:
-        csv_file_object = s3.get_object(Bucket=bucket, Key=key)  # -> dict
+        csv_file_object = s3.get_object(Bucket=bucket, Key=key)  # -> returns dict
         logging.info("csv file successfully retrieved")
         df = pd.read_csv(csv_file_object["Body"])
         return df
@@ -99,19 +102,32 @@ def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
     except pd.errors.EmptyDataError as error:
         logging.error("the file you are trying to retrieve does not contain any data")
         raise error
-    except ClientError as error:
-        logging.error("the file does not exist, check filename")
-        # TODO: what if it is an InvalidObjectState exception?
-        raise error
+    except ClientError as error:  
+        if error.response["error"]["code"] == "NoSuchKey":
+            logging.error("the file does not exist, check filename")
+            raise error
+        if error.response["error"]["code"] == "InvalidObjectState": 
+            logging.warning("Your file is archived, retrieve before proceeding")
+            raise error
+            # TODO: check error handling here
     # S3.Client.exceptions.NoSuchKey
     # S3.Client.exceptions.InvalidObjectState
 
-""" extension """
+""" extension """  #not necessary? 
 # def get_json(): 
 #     pass 
 
 # def get_parquet(): 
 #     pass
+
+""" alternative"""
+def convert_file_to_df(): 
+    #draft not completed
+    if file_type == 'csv': 
+        df = pd.read_csv(file_object["Body"])
+    if file_type == 'json': 
+        df = pd.read_json(file_object["Body"])
+    return df
 
 def obfuscate_data(data: pd.DataFrame, fields: list) -> bytes:
     # TODO: confirm if returning bytes or df # TODO: use this style for all?
@@ -126,16 +142,18 @@ def obfuscate_data(data: pd.DataFrame, fields: list) -> bytes:
     """
     df = data.copy()
 
+    invalid_headings = []
+
     for heading in fields:
         valid_columns = list(df.columns)
         if heading not in valid_columns:
-            logger.warning(f"{heading} is an invalid header name")
-            return "invalid heading"
-        # if datatype is not str log a warning
+            invalid_headings.append(heading)
+        # if datatype in specific row/column is not str log a warning
         # TODO: check how to specify specific fields within
-        # the pd and put in the warning
+        # the pd and put in the warning (cast them safely) eg. 0 or NaN
         else:
             df[heading] = "xxx"
+    logger.warning(f"Invalid headings identified: {invalid_headings}")
     return df
 
 
@@ -162,6 +180,10 @@ def obfuscator(input_json: json) -> bytes:
     """
     validate_input_json()
     extract_s3_details()
+    extract_fields_to_alter()
+    get_csv()  # or get_file() if updated
+    convert_file_to_df()
+    obfuscate_data()
  
     """setup with extension in mind"""
 
@@ -175,7 +197,8 @@ def obfuscator(input_json: json) -> bytes:
     # if file_type == "json":
     else:
         logging.error("invalid document type")
-        return "invalid document type"
+        #raise exception
+
 
 
 if __name__ == "__main__":
@@ -195,3 +218,5 @@ if __name__ == "__main__":
 
     # TODO: confirm security, PEP8 compliance.
     pass
+
+# TODO: check logging levels: info -> sucess, warning -> recoverable issue, error -> critical failure! 
