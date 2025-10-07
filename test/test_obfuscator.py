@@ -14,6 +14,44 @@ mock_df,
 mock_csv_json
 """
 
+class TestInputJSON: 
+    def test_validate_json_returns_true_if_valid(self):
+        pass
+
+    def test_validate_json_returns_False_if_invalid(self): 
+        pass
+
+    def test_success_msg_logged_when_valid_json_passed(self): 
+        pass 
+
+    def test_error_raised_when_empty_json_passed(self):
+        pass
+
+    def test_error_raised_when_values_missing_from_json(self):
+        pass
+
+    def test_error_raised_when_keys_missing_from_json(self):
+        pass 
+
+    def test_error_raised_when_json_contains_syntax_error(self):
+        with pytest.raises(ValueError):
+            obfuscator(
+                '{"file_to_obfuscate":'
+                '"s3://test_bucket_TR_NC/test_file.csv",'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"]'
+            )
+            # no closing bracket
+    
+
+class TestExtractS3Details:
+    def test(self):
+        pass
+
+
+class TestExtractFieldsToAlter:
+    def test(self): 
+        pass
+
 
 class TestGetCSV:
     def test_returns_df(self, mock_bucket, mock_csv_file, s3_client):
@@ -169,14 +207,7 @@ class TestObfuscator:
     def test_csv_file_returns_bytestream(self, mock_json_for_csv_file):
         assert type(obfuscator(mock_json_for_csv_file)) == bytes
 
-    def test_returns_error_msg_if_invalid_json_passed(self):
-        with pytest.raises(ValueError):
-            obfuscator(
-                '{"file_to_obfuscate":'
-                '"s3://test_bucket_TR_NC/test_file.csv",'
-                '"pii_fields": ["Name", "Email", "Phone", "DOB"]'
-            )
-            # no closing bracket
+   
 
     def test_returns_error_msg_if_invalid_URL(self):
         with pytest.raises(ParamValidationError):

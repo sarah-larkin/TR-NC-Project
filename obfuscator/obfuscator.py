@@ -16,6 +16,63 @@ s3 = boto3.client("s3")
 
 # Helper functions
 
+def validate_input_json(input_json: json) -> bool:  # TODO: return bool? 
+    """confirm if json entered is valid
+
+    Args:
+        input_json (json): json string passed into initial function
+
+    Raises:
+        error: _description_  #TODO: add exceptions
+    """
+    try:
+        input = json.loads(input_json)
+        # TODO: add logic here 
+
+    except ValueError as error:
+        logging.error("invalid JSON")
+        raise error
+    
+    # validate JSON string
+    # both elements present
+    pass
+
+def extract_s3_details(input_json: json) -> str:  # TODO: str output? 
+    try:
+        input = json.loads(input_json)
+        url = input["file_to_obfuscate"]
+
+        o = urlparse(url)
+
+        bucket = o.netloc
+        key = o.path.lstrip("/")  # file_path/file_name (with first / removed)
+        file_name = key.split("/")[-1]
+        file_type = file_name.split(".")[-1]
+
+        fields = input["pii_fields"]
+
+    except ValueError as error:
+        logging.error("invalid JSON")
+        raise error
+    except ParamValidationError as error:
+        logging.error("invalid URL")
+        raise error
+    except TypeError as error:
+        logging.error("invalid input")  # if url or list are null
+        raise error
+    
+    # file location valid
+    # file type = csv  - if extended one of the valid file types handled
+    pass
+
+def extract_fields_to_alter(input_json): 
+    input = json.loads(input_json)
+    fields = input["pii_fields"]
+    
+    # fields valid (headings)
+    # fields type = list of strings
+
+    return fields
 
 def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
     """access the specified S3 bucket and retrieve the csv file.
@@ -49,6 +106,12 @@ def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
     # S3.Client.exceptions.NoSuchKey
     # S3.Client.exceptions.InvalidObjectState
 
+""" extension """
+# def get_json(): 
+#     pass 
+
+# def get_parquet(): 
+#     pass
 
 def obfuscate_data(data: pd.DataFrame, fields: list) -> bytes:
     # TODO: confirm if returning bytes or df # TODO: use this style for all?
@@ -97,45 +160,9 @@ def obfuscator(input_json: json) -> bytes:
 
     exceptions: # TODO: list exceptions
     """
-
-    # validate JSON string
-
-    # file location valid
-    # file type = csv  - if extended one of the valid file types handled
-    # fields valid (headings)
-    # fields type = list of strings
-    # both elements present
-
-    # TODO: try/except exception handling - check json exceptions
-    # if input_json is not type(json):
-    #     logging.error("input invalid")
-    #     print("input invalid")
-    #     return "input invalid"
-    # else:
-
-    try:
-        input = json.loads(input_json)
-        url = input["file_to_obfuscate"]
-
-        o = urlparse(url)
-
-        bucket = o.netloc
-        key = o.path.lstrip("/")  # file_path/file_name (with first / removed)
-        file_name = key.split("/")[-1]
-        file_type = file_name.split(".")[-1]
-
-        fields = input["pii_fields"]
-
-    except ValueError as error:
-        logging.error("invalid JSON")
-        raise error
-    except ParamValidationError as error:
-        logging.error("invalid URL")
-        raise error
-    except TypeError as error:
-        logging.error("invalid input")  # if url or list are null
-        raise error
-
+    validate_input_json()
+    extract_s3_details()
+ 
     """setup with extension in mind"""
 
     if file_type == "csv":
