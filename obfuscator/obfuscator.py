@@ -149,12 +149,12 @@ def get_file(file_details: dict, s3: object) -> bytes:
     bucket = file_details["Bucket"]
     key = file_details["Key"]
 
-    #try: 
+    # try: 
     file_object = s3.get_object(Bucket=bucket, Key=key)  # -> returns dict
-    data = file_object['Body'].read()  # TODO: check this 
+    data = file_object['Body'].read()  # .read() to return bytes
     logging.info("file retrieved")
     return data
-    #except: 
+    # except: 
 
     
     #NoSuchBucket

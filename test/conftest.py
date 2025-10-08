@@ -1,4 +1,4 @@
-from moto import mock_aws #TODO: only mock_s3 needed? (mock_aws)
+from moto import mock_aws 
 import os
 import pytest
 import boto3
@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 
-@pytest.fixture(scope='module', autouse=True)
+@pytest.fixture(scope='function', autouse=True)
 def aws_credentials():
     """mocked aws credentials for moto"""
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"
@@ -22,24 +22,37 @@ def mock_s3_client(aws_credentials):
         yield boto3.client('s3', region_name='eu-west-2') #TODO:checkout session instead of hard coding region
 
 @pytest.fixture(scope='function')
-def mock_bucket(s3_client):
+def mock_bucket(mock_s3_client):
     """mocked s3 bucket"""
     name = 'test_bucket_TR_NC'
-    s3_client.create_bucket(
+    mock_s3_client.create_bucket(
         Bucket=name,
         CreateBucketConfiguration={'LocationConstraint': 'eu-west-2'}
     )
     return name
 
-@pytest.fixture(scope='module')
-def mock_csv_file(s3_client, mock_bucket): 
+@pytest.fixture(scope='function')
+def mock_dict_s3_file_details(): 
+    """mocked python dict output from extract_s3_details()"""
+    mock_dict = {"Scheme" : "s3",
+                "Bucket" : "test_bucket_TR_NC",
+                "Key": "test_file.csv",
+                "File_Name": "test_file.csv",
+                "File_Type": "csv"}
+    return mock_dict
+
+#"outer_folder/inner_folder/
+
+@pytest.fixture(scope='function')
+def mock_csv_file(mock_s3_client, mock_dict_s3_file_details, mock_bucket): 
     """mocked csv file
     (additional edge cases added to mock_df below)"""
-    file_name = 'test_file.csv'
-    s3_client.put_object(Bucket=mock_bucket,  #consider upload_fileobj for replicating larger file size
-                      Key=file_name,
-                      Body= b'Name,Email,Phone,DOB,Notes\nAlice,alice@example.com,+1-555-111-2222,1990-01-01,ok\nBob,bob_at_example.com,5551113333,1985-02-03\nCharlie,charlie@ex.co.uk,0,01/05/1975,no action') #byte string 
-    return file_name
+    #file_name =    #'test_file.csv'
+    mock_s3_client.put_object(
+        Bucket=mock_dict_s3_file_details["Bucket"],  #consider upload_fileobj for replicating larger file size
+        Key=mock_dict_s3_file_details["Key"],
+        Body= b'Name,Email,Phone,DOB,Notes\nAlice,alice@example.com,+1-555-111-2222,1990-01-01,ok\nBob,bob_at_example.com,5551113333,1985-02-03\nCharlie,charlie@ex.co.uk,0,01/05/1975,no action') #byte string 
+    return mock_dict_s3_file_details
 #consider returning a dict with {"bucket": mock_bucket, "key": file_name} if likely to need more than just the key in future tests. 
 #TODO: check if need to include more edge cases here in the body added to the csv (like in mock_df)
 
@@ -115,14 +128,5 @@ def mock_dict_for_csv_file():  # TODO: update name and tests
     mock_dict_for_csv = {"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv", "pii_fields": ["Name", "Email", "Phone", "DOB"]}
     return mock_dict_for_csv
 
-@pytest.fixture(scope='function')
-def mock_dict_s3_file_details(): 
-    """mocked python dict output from extract_s3_details()"""
-    mock_dict = {"Scheme" : "s3",
-                "Bucket" : "test_bucket_TR_NC",
-                "Key": "test_file.csv",
-                "File_Name": "test_file.csv",
-                "File_Type": "csv"}
-    return mock_dict
 
-#"outer_folder/inner_folder/
+

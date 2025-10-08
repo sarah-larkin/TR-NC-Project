@@ -5,6 +5,7 @@ from botocore.exceptions import ClientError, ParamValidationError
 from copy import deepcopy
 import numpy as np
 import logging
+from moto import mock_aws
 
 """
 fixtures can be found in test/conftest.py file mocking:
@@ -303,10 +304,37 @@ class TestExtractFieldsToAlter:
                     "pii_fields": [1, 2, 3, "pii_fields"]})
         assert "The following headings are not strings: [1, 2, 3]" in caplog.text
 
-
+@mock_aws
 class TestGetFile: 
-    def test_get_file_returns_bytestream(self, mock_dict_s3_file_details, mock_s3_client):
-        #arrange
+    def test_get_file_returns_bytestream(self, mock_csv_file, mock_s3_client):    
+        result = get_file(mock_csv_file, mock_s3_client)
+        assert isinstance(result, bytes) 
+    # def test_get_file_returns_bytestream(self, mock_dict_s3_file_details, mock_s3_client):
+    #     #arrange
+    #     mock_s3_client.create_bucket(Bucket=mock_dict_s3_file_details["Bucket"],
+    #                                  CreateBucketConfiguration={'LocationConstraint': 'eu-west-2'})
+    #     mock_s3_client.put_object(
+    #         Bucket=mock_dict_s3_file_details["Bucket"],
+    #         Key=mock_dict_s3_file_details["Key"],
+    #         Body=b"data1, data2, data3"
+    #     )
+    #     #act        
+    #     result = get_file(mock_dict_s3_file_details, mock_s3_client)
+    #     assert isinstance(result, bytes) 
+
+    def test_get_file_logs_success_msg(self, mock_csv_file, mock_s3_client, caplog):
+        # mock_s3_client.create_bucket(Bucket=mock_dict_s3_file_details["Bucket"],
+        #                              CreateBucketConfiguration={'LocationConstraint': 'eu-west-2'})
+        # mock_s3_client.put_object(
+        #     Bucket=mock_dict_s3_file_details["Bucket"],
+        #     Key=mock_dict_s3_file_details["Key"],
+        #     Body=b"data1, data2, data3"
+        # )
+        caplog.set_level(logging.INFO)
+        get_file(mock_csv_file, mock_s3_client)
+        assert "file retrieved" in caplog.text
+        
+    def test_get_file_return_content_of_csv_file(self, mock_dict_s3_file_details, mock_s3_client): 
         mock_s3_client.create_bucket(Bucket=mock_dict_s3_file_details["Bucket"],
                                      CreateBucketConfiguration={'LocationConstraint': 'eu-west-2'})
         mock_s3_client.put_object(
@@ -314,20 +342,91 @@ class TestGetFile:
             Key=mock_dict_s3_file_details["Key"],
             Body=b"data1, data2, data3"
         )
-        #act        
-        result = get_file(mock_dict_s3_file_details, mock_s3_client)
-        assert type(result) == bytes
+        
+        output = get_file(mock_dict_s3_file_details, mock_s3_client)
+
+        assert output == b"data1, data2, data3"
+    @pytest.mark.skip
+    def test_get_file_raises_error_for_invalid_url(Self):
+        with pytest.raises(ParamValidationError):
+                extract_s3_details(
+                    {"file_to_obfuscate":
+                    "test_bucket_TR_NC/test_file.csv",
+                    "pii_fields": ["Name", "Email", "Phone", "DOB"]}
+                )
+                # missing s3://
+    @pytest.mark.skip
+    def test_get_file_logs_error_for_invalid_url(Self, caplog):
+        caplog.set_level(logging.ERROR)
+        with pytest.raises(ParamValidationError):
+                extract_s3_details(
+                    {"file_to_obfuscate":
+                    "test_bucket_TR_NC/test_file.csv",
+                    "pii_fields": ["Name", "Email", "Phone", "DOB"]}
+                )
+                # missing s3://
+        assert "invalid URL" in caplog.text
+    @pytest.mark.skip
+    def test_get_file_raises_error_if_bucket_does_not_exist(self, mock_bucket, mock_s3_client):
+        """testing get_csv returns a client error
+        for missing/incorrect file name"""
+        non_file = "nonexistent_file.csv"
+        with pytest.raises(ClientError):
+            get_csv(mock_bucket, non_file, mock_s3_client)
+    @pytest.mark.skip
+    def test_clienterror_error_code_when_file_does_not_exist(
+        self, mock_bucket, mock_s3_client
+    ):
+        """testing specific exception code is NoSuchKey
+        for missing/incorrect file name"""
+        incorrect_key = "incorrect_filename.csv"
+        with pytest.raises(ClientError) as exc:
+            get_csv(mock_bucket, incorrect_key, mock_s3_client)
+        err = exc.value.response["Error"]
+        assert err["Code"] == "NoSuchKey"
+
+    def test_get_file_logs_error_if_bucket_does_not_exist(self): #ClientError
+        pass
+
+    def test_get_file_raises_error_if_denied_access_to_bucket(self): #ClientError
+        pass
+
+    def test_get_file_logs_error_if_denied_access_to_bucket(self):
+        pass
+
+    def test_get_file_raises_error_if_no_data_in_file(self, mock_s3_client, mock_bucket):  #mock with empty byte string -> ValueError
+        empty_file = "empty_file.csv"
+        mock_s3_client.put_object(Bucket=mock_bucket, Key=empty_file, Body=b"")
+        with pytest.raises(pd.errors.EmptyDataError) as exc:
+            get_csv(mock_bucket, empty_file, mock_s3_client)
+        assert exc.value.args[0] == "No columns to parse from file"
+        # TODO: check this out further,
+        # error message could change with new versions
+
+    def test_get_file_logs_error_if_no_data_in_file(self):
+        pass
+
+    def test_get_file_raises_error_if_retrieving_archived_file(self): 
+        pass
+
+    def test_get_file_logs_error_if_retrieving_archived_file(self): 
+        pass
+
+    def test_integration(self): 
+        #validate_json -> extract_s3_details -> get_file 
+        pass
+    
 
 @pytest.mark.skip
 class TestGetCSV:
-    def test_returns_df(self, mock_bucket, mock_csv_file, s3_client):
-        response = get_csv(mock_bucket, mock_csv_file, s3_client)
+    def test_returns_df(self, mock_bucket, mock_csv_file, mock_s3_client):
+        response = get_csv(mock_bucket, mock_csv_file, mock_s3_client)
         assert isinstance(response, pd.DataFrame)
 
     def test_returns_content_from_the_named_csv_file(
-        self, mock_bucket, mock_csv_file, s3_client
+        self, mock_bucket, mock_csv_file, mock_s3_client
     ):
-        df = get_csv(mock_bucket, mock_csv_file, s3_client)
+        df = get_csv(mock_bucket, mock_csv_file, mock_s3_client)
         assert list(df.columns) == ["Name", "Email", "Phone", "DOB", "Notes"]
         # df.keys() also works
         assert list(df.loc[0]) == [
@@ -363,9 +462,9 @@ class TestGetCSV:
 
     def test_get_csv_raises_exception_if_csv_is_empty(self, mock_bucket, mock_s3_client):
         empty_file = "empty_file.csv"
-        s3_client.put_object(Bucket=mock_bucket, Key=empty_file, Body=b"")
+        mock_s3_client.put_object(Bucket=mock_bucket, Key=empty_file, Body=b"")
         with pytest.raises(pd.errors.EmptyDataError) as exc:
-            get_csv(mock_bucket, empty_file, s3_client)
+            get_csv(mock_bucket, empty_file, mock_s3_client)
         assert exc.value.args[0] == "No columns to parse from file"
         # TODO: check this out further,
         # error message could change with new versions
@@ -375,16 +474,16 @@ class TestGetCSV:
         for missing/incorrect file name"""
         non_file = "nonexistent_file.csv"
         with pytest.raises(ClientError):
-            get_csv(mock_bucket, non_file, s3_client)
+            get_csv(mock_bucket, non_file, mock_s3_client)
 
     def test_clienterror_error_code_when_file_does_not_exist(
-        self, mock_bucket, s3_client
+        self, mock_bucket, mock_s3_client
     ):
         """testing specific exception code is NoSuchKey
         for missing/incorrect file name"""
         incorrect_key = "incorrect_filename.csv"
         with pytest.raises(ClientError) as exc:
-            get_csv(mock_bucket, incorrect_key, s3_client)
+            get_csv(mock_bucket, incorrect_key, mock_s3_client)
         err = exc.value.response["Error"]
         assert err["Code"] == "NoSuchKey"
 
