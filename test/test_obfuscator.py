@@ -213,7 +213,24 @@ class TestExtractFieldsToAlter:
                 "pii_fields": None}
             )
         assert "no fields present" in caplog.text
-        
+
+    def test_error_raised_if_fields_is_not_list(self): 
+        with pytest.raises(TypeError):
+            extract_fields_to_alter(
+                {"file_to_obfuscate":
+                "s3://test_bucket_TR_NC/test_file.csv",
+                "pii_fields": {1, 2, 3}}
+            )
+
+    def test_error_logged_if_fields_is_not_list(self, caplog): 
+        caplog.set_level(logging.ERROR)
+        with pytest.raises(TypeError):
+            extract_fields_to_alter(
+                {"file_to_obfuscate":
+                "s3://test_bucket_TR_NC/test_file.csv",
+                "pii_fields": "1, 2, 3"}
+            )
+        assert "fields must be a list" in caplog.text
 
     def test_raises_error_if_fields_list_empty(self):
         with pytest.raises(ValueError):
@@ -232,6 +249,19 @@ class TestExtractFieldsToAlter:
                 )
         assert "no fields detected" in caplog.text
 
+    def test_raises_error_if_invalid_fields(self):
+        with pytest.raises(TypeError): 
+            extract_fields_to_alter({"file_to_obfuscate":
+                    "s3://test_bucket_TR_NC/test_file.csv",
+                    "pii_fields": [1, 2, 3, "pii_fields"]})
+
+    def test_logs_error_if_invalid_fields(self, caplog): 
+        caplog.set_level(logging.ERROR)
+        with pytest.raises(TypeError): 
+            extract_fields_to_alter({"file_to_obfuscate":
+                    "s3://test_bucket_TR_NC/test_file.csv",
+                    "pii_fields": [1, 2, 3, "pii_fields"]})
+        assert "The following headings are not strings: [1, 2, 3]" in caplog.text
 
 @pytest.mark.skip
 class TestGetCSV:

@@ -43,7 +43,7 @@ def validate_input_json(input_json: str) -> dict:
         logging.error("insufficient number of fields present")
 
     # # optional: (if fields are fixed)
-    # permitted_keys = ["file_to_obfuscate", "pii_fields"] # TODO: find way to avoid hard coding fields
+    # permitted_keys = ["file_to_obfuscate", "pii_fields"] # TODO: find way to avoid hard coding fields?
     # keys = list(data.keys()) 
     # incorrect_keys = []
     # missing_keys = []
@@ -89,7 +89,19 @@ def extract_s3_details(verified_input: dict) -> dict:
     return {"Bucket" : bucket, "Key": key, "File_Name": file_name, "File_Type": file_type}
 
 def extract_fields_to_alter(verified_input: dict) -> list: 
-    
+    """using the dict from validate_json() return the headings in a list.
+
+    Args:
+        verified_input (dict): the dictionary returned from validate_input_json()
+
+    Raises:
+        ValueError: if NoneType  # TODO: confirm if keeping this in 
+        ValueError: if empty list 
+        TypeError: if list contains elements that are not strings
+
+    Returns:
+        list: list of the 
+    """
     fields = verified_input["pii_fields"] #TODO: check that this being hard coded is acceptable 
     
     #should be handled in validate_json()
@@ -97,6 +109,10 @@ def extract_fields_to_alter(verified_input: dict) -> list:
         logging.error("no fields present")
         raise ValueError("no fields present")
     
+    if not isinstance(fields, list): 
+        logging.error("fields must be a list")
+        raise TypeError("fields must be a list")
+
     if len(fields) == 0: 
         logging.error("no fields detected")
         raise ValueError ("no fields detected")
@@ -113,9 +129,7 @@ def extract_fields_to_alter(verified_input: dict) -> list:
     logging.info("pii fields extracted")
     return fields
 
-# fields type = list of strings 
-    # not an empty list
-    # fields valid (headings) -> cannot be handled here? 
+    # fields valid (headings) vs df -> cannot be handled here? 
 
 def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
     #TODO: could this be get_file? verify bucket/file exists and extract 
