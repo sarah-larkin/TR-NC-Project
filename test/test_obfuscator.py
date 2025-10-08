@@ -24,11 +24,6 @@ class TestValidateJSON:
             "pii_fields": ["Name", "Email", "Phone", "DOB"]
         }
 
-    # def test_validate_json_returns_False_if_invalid(self):
-    #     result = validate_input_json('null')
-    #     assert result == False
-        # TODO: is bool output necessary?? 
-
     def test_success_msg_logged_when_valid_json_passed(self, caplog, mock_json_for_csv_file):
         caplog.set_level(logging.INFO)
         validate_input_json(mock_json_for_csv_file)
@@ -130,63 +125,109 @@ class TestValidateJSON:
         assert "Missing Fields: ['file_to_obfuscate']" in caplog.text
     
 
-@pytest.mark.skip
 class TestExtractS3Details:
     def test_s3_details_returns_dict(self, mock_dict_for_csv_file): 
         result = extract_s3_details(mock_dict_for_csv_file)
         assert isinstance(result, dict)
-        assert result == {"Bucket" : "test_bucket_TR_NC", "Key": "test_file.csv", "File_Name" : "test_file.csv", "File_Type": "csv"}
+        assert result == {"Scheme" : "s3",
+                          "Bucket" : "test_bucket_TR_NC",
+                          "Key": "test_file.csv",
+                          "File_Name" : "test_file.csv",
+                          "File_Type": "csv"}
 
-    def test_returns_error_msg_if_invalid_URL(self):
-        with pytest.raises(ParamValidationError):
-            extract_s3_details(
-                '{"file_to_obfuscate": '
-                '"test_bucket_TR_NC/test_file.csv",'
-                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
+    def test_func_accepts_longer_file_path(self): 
+        result= extract_s3_details(
+                {"file_to_obfuscate":
+                "s3://test_bucket_TR_NC/outer_folder/inner_folder/test_file.csv",
+                "pii_fields": ["Name", "Email", "Phone", "DOB"]}
             )
-            # missing s3://
+        assert result == {"Scheme" : "s3",
+                          "Bucket" : "test_bucket_TR_NC",
+                          "Key": "outer_folder/inner_folder/test_file.csv",
+                          "File_Name": "test_file.csv",
+                          "File_Type": "csv"}
 
-    def test_returns_error_msg_if_URL_null(self):
+    #should already be handled in validate_json()
+    def test_raises_error_if_URL_null(self):
         with pytest.raises(TypeError):
             extract_s3_details(
-                '{"file_to_obfuscate": null,'
-                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
+                {"file_to_obfuscate": None,
+                "pii_fields": ["Name", "Email", "Phone", "DOB"]}
             )
 
-    @pytest.mark.skip
-    def test_returns_error_msg_if_URL_is_empty_string(self):
-        with pytest.raises(ParamValidationError):
+    def test_raises_error_if_URL_is_empty_string(self):
+        with pytest.raises(ValueError):
             extract_s3_details(
-                '{"file_to_obfuscate": "",'
-                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
+                {"file_to_obfuscate": "",
+                "pii_fields": ["Name", "Email", "Phone", "DOB"]}
             )
+    
+    def test_logs_error_msg_if_URL_is_empty_string(self, caplog):
+        caplog.set_level(logging.ERROR)
+        with pytest.raises(ValueError):
+            extract_s3_details(
+                {"file_to_obfuscate": "",
+                "pii_fields": ["Name", "Email", "Phone", "DOB"]}
+            )
+        assert "no URL" in caplog.text
 
-    def test_raises_error_if_not_accepted_file_type(self, mock_json_for_csv_file):
-        # (ie. not [csv, (json, parquet)])
-        # accepted_types = ["csv"]
-        # o = urlparse("test_bucket_TR_NC/test_file.pdf") #pdf type
-        # key = o.path.lstrip('/') #file_path/file_name (with first / removed)
-        # file_name = key.split('/')[-1]
-        # file_type = file_name.split('.')[-1]
-        # assert file_type not in accepted_types
-        assert (
+    def test_raises_error_if_not_valid_s3_url(self): 
+        with pytest.raises(ValueError): 
             extract_s3_details(
-                '{"file_to_obfuscate":'
-                '"s3://test_bucket_TR_NC/test_file.pdf",'
-                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
-            )
-            == "invalid document type"
-        )
-        assert (
+                    {"file_to_obfuscate": 
+                    "test_bucket_TR_NC/test_file.csv",
+                    "pii_fields": ["Name", "Email", "Phone", "DOB"]}
+                )
+    
+    def test_logs_error_msg_if_not_valid_s3_url(self, caplog): 
+        caplog.set_level(logging.ERROR)
+        with pytest.raises(ValueError):
             extract_s3_details(
-                '{"file_to_obfuscate":'
-                '"s3://test_bucket_TR_NC/test_file.txt",'
-                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
-            )
-            == "invalid document type"
-        )
-        # TODO: handle this better?
+                        {"file_to_obfuscate":
+                        "test_bucket_TR_NC/test_file.csv",
+                        "pii_fields": ["Name", "Email", "Phone", "DOB"]}
+                    )
+        assert "not a valid s3 URL" in caplog.text
 
+    def test_url_raises_error_invalid_file_type(self): 
+        with pytest.raises(ValueError):
+            extract_s3_details(
+                        {"file_to_obfuscate":
+                        "s3://test_bucket_TR_NC/test_file",
+                        "pii_fields": ["Name", "Email", "Phone", "DOB"]}
+                    )
+            #no file extension
+
+    def test_error_logged_if_invalid_file_type(self, caplog): 
+        caplog.set_level(logging.ERROR)
+        with pytest.raises(ValueError):
+            extract_s3_details(
+                        {"file_to_obfuscate":
+                        "s3://test_bucket_TR_NC/test_file",
+                        "pii_fields": ["Name", "Email", "Phone", "DOB"]}
+                    )
+            #no file extension
+        assert "unable to confirm file type" in caplog.text
+
+    def test_raises_error_if_not_accepted_file_type(self):
+        with pytest.raises(ValueError): 
+            extract_s3_details(
+                {"file_to_obfuscate":
+                "s3://test_bucket_TR_NC/test_file.pdf",
+                "pii_fields": ["Name", "Email", "Phone", "DOB"]}
+            )
+        
+    def test_logs_error_if_not_accepted_file_type(self, caplog): 
+        caplog.set_level(logging.ERROR)
+        with pytest.raises(ValueError): 
+            extract_s3_details(
+                {"file_to_obfuscate":
+                "s3://test_bucket_TR_NC/test_file.txt",
+                "pii_fields": ["Name", "Email", "Phone", "DOB"]}
+            )
+        assert "unable to process txt files" in caplog.text
+        
+    
 
 class TestExtractFieldsToAlter:
     def test_correct_input_logs_success_msg(self, caplog, mock_dict_for_csv_file):
@@ -296,6 +337,15 @@ class TestGetCSV:
             "01/05/1975",
             "no action",
         ]
+    #added in: 
+    def test_returns_error_msg_if_invalid_URL(self):
+            with pytest.raises(ParamValidationError):
+                extract_s3_details(
+                    '{"file_to_obfuscate": '
+                    '"test_bucket_TR_NC/test_file.csv",'
+                    '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
+                )
+                # missing s3://
 
     def test_get_csv_raises_exception_if_csv_is_empty(self, mock_bucket, s3_client):
         empty_file = "empty_file.csv"

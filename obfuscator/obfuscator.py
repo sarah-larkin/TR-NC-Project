@@ -67,26 +67,38 @@ def validate_input_json(input_json: str) -> dict:
 #TODO: complete last 2 tests for this
 
 def extract_s3_details(verified_input: dict) -> dict: 
-    try:
-        url = verified_input["file_to_obfuscate"]
-        o = urlparse(url)
     
-    except ParamValidationError as error:  # botocore exception
-            logging.error("invalid URL")
-            raise error
+    url = verified_input["file_to_obfuscate"]
+    o = urlparse(url)
     
-    except TypeError as error:
-        logging.error("invalid input")  # if url or list are null
-        raise error
-    
+    scheme = o.scheme
     bucket = o.netloc
     key = o.path.lstrip("/")  # file_path/file_name (with first / removed)
     file_name = key.split("/")[-1]
     file_type = file_name.split(".")[-1]
+
+    permitted_file_types = ["csv"]  # TODO: update in extension 
+
+    if len(url) == 0: 
+        logging.error("no URL")
+        raise ValueError("no URL")
     
-    # file location valid
-    # file type = csv  - if extended one of the valid file types handled
-    return {"Bucket" : bucket, "Key": key, "File_Name": file_name, "File_Type": file_type}
+    if scheme != "s3": 
+        logging.error("not a valid s3 URL")
+        raise ValueError("not a valid s3 URL")
+    
+    # TODO: check if this is engough to verify the URL 
+
+    if not file_name or "." not in file_name: 
+        logging.error("unable to confirm file type")
+        file_type = None
+        raise ValueError("unable to confirm file type")
+    
+    if file_type not in permitted_file_types: 
+        logging.error(f"unable to process {file_type} files")
+        raise ValueError(f"unable to process {file_type} files")
+
+    return {"Scheme" : scheme, "Bucket" : bucket, "Key": key, "File_Name": file_name, "File_Type": file_type}
 
 def extract_fields_to_alter(verified_input: dict) -> list: 
     """using the dict from validate_json() return the headings in a list.
@@ -154,6 +166,11 @@ def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
         logging.info("csv file successfully retrieved")
         df = pd.read_csv(csv_file_object["Body"])
         return df
+
+    #added in: (was originally in s3 extraction part/main func)
+    except ParamValidationError as error:  # botocore exception
+            logging.error("invalid URL")
+            raise error
 
     except pd.errors.EmptyDataError as error:
         logging.error("the file you are trying to retrieve does not contain any data")
