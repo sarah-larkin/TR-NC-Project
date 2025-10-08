@@ -1,4 +1,4 @@
-from obfuscator.obfuscator import extract_s3_details, extract_fields_to_alter, get_csv, obfuscate_data, obfuscator, validate_input_json
+from obfuscator.obfuscator import validate_input_json, extract_s3_details, extract_fields_to_alter, get_csv, get_file, obfuscate_data, obfuscator
 import pytest
 import pandas as pd
 from botocore.exceptions import ClientError, ParamValidationError
@@ -227,7 +227,6 @@ class TestExtractS3Details:
             )
         assert "unable to process txt files" in caplog.text
         
-    
 
 class TestExtractFieldsToAlter:
     def test_correct_input_logs_success_msg(self, caplog, mock_dict_for_csv_file):
@@ -304,6 +303,21 @@ class TestExtractFieldsToAlter:
                     "pii_fields": [1, 2, 3, "pii_fields"]})
         assert "The following headings are not strings: [1, 2, 3]" in caplog.text
 
+
+class TestGetFile: 
+    def test_get_file_returns_bytestream(self, mock_dict_s3_file_details, mock_s3_client):
+        #arrange
+        mock_s3_client.create_bucket(Bucket=mock_dict_s3_file_details["Bucket"],
+                                     CreateBucketConfiguration={'LocationConstraint': 'eu-west-2'})
+        mock_s3_client.put_object(
+            Bucket=mock_dict_s3_file_details["Bucket"],
+            Key=mock_dict_s3_file_details["Key"],
+            Body=b"data1, data2, data3"
+        )
+        #act        
+        result = get_file(mock_dict_s3_file_details, mock_s3_client)
+        assert type(result) == bytes
+
 @pytest.mark.skip
 class TestGetCSV:
     def test_returns_df(self, mock_bucket, mock_csv_file, s3_client):
@@ -347,7 +361,7 @@ class TestGetCSV:
                 )
                 # missing s3://
 
-    def test_get_csv_raises_exception_if_csv_is_empty(self, mock_bucket, s3_client):
+    def test_get_csv_raises_exception_if_csv_is_empty(self, mock_bucket, mock_s3_client):
         empty_file = "empty_file.csv"
         s3_client.put_object(Bucket=mock_bucket, Key=empty_file, Body=b"")
         with pytest.raises(pd.errors.EmptyDataError) as exc:
@@ -356,7 +370,7 @@ class TestGetCSV:
         # TODO: check this out further,
         # error message could change with new versions
 
-    def test_raises_clienterror_if_file_does_not_exist(self, mock_bucket, s3_client):
+    def test_raises_clienterror_if_file_does_not_exist(self, mock_bucket, mock_s3_client):
         """testing get_csv returns a client error
         for missing/incorrect file name"""
         non_file = "nonexistent_file.csv"

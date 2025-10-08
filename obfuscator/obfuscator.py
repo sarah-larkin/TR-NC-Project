@@ -98,7 +98,9 @@ def extract_s3_details(verified_input: dict) -> dict:
         logging.error(f"unable to process {file_type} files")
         raise ValueError(f"unable to process {file_type} files")
 
-    return {"Scheme" : scheme, "Bucket" : bucket, "Key": key, "File_Name": file_name, "File_Type": file_type}
+    file_details = {"Scheme" : scheme, "Bucket" : bucket, "Key": key, "File_Name": file_name, "File_Type": file_type}
+
+    return file_details
 
 def extract_fields_to_alter(verified_input: dict) -> list: 
     """using the dict from validate_json() return the headings in a list.
@@ -143,10 +145,25 @@ def extract_fields_to_alter(verified_input: dict) -> list:
 
     # fields valid (headings) vs df -> cannot be handled here? 
 
+def get_file(file_details: dict, s3: object) -> bytes: 
+    bucket = file_details["Bucket"]
+    key = file_details["Key"]
+
+    #try: 
+    file_object = s3.get_object(Bucket=bucket, Key=key)  # -> returns dict
+    data = file_object['Body'].read()  # TODO: check this 
+    logging.info("file retrieved")
+    return data
+    #except: 
+
+    
+    #NoSuchBucket
+    #NoSuchKey
+
 def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
     #TODO: could this be get_file? verify bucket/file exists and extract 
     #would require another function to read file/access the data within
-    """access the specified S3 bucket and retrieve the csv file.
+    """access the specified S3 bucket and retrieve the file.
 
     args:
     bucket - retrieved from json passed to obfuscator()

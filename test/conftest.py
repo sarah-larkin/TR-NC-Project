@@ -15,13 +15,13 @@ def aws_credentials():
     os.environ["AWS_SESSION_TOKEN"] = "testing"
     os.environ["AWS_DEFAULT_REGION"]='eu-west-2'
 
-@pytest.fixture(scope='module')  #TODO: update to yield_fixture??
-def s3_client(aws_credentials):
+@pytest.fixture(scope='function')  
+def mock_s3_client(aws_credentials):
     """mocked s3 client"""
     with mock_aws():     
         yield boto3.client('s3', region_name='eu-west-2') #TODO:checkout session instead of hard coding region
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='function')
 def mock_bucket(s3_client):
     """mocked s3 bucket"""
     name = 'test_bucket_TR_NC'
@@ -110,7 +110,19 @@ def mock_json_for_csv_file():
     return mock_csv_json
 
 @pytest.fixture(scope='function') 
-def mock_dict_for_csv_file(): 
+def mock_dict_for_csv_file():  # TODO: update name and tests
     """mocked python dict for a csv file"""
     mock_dict_for_csv = {"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv", "pii_fields": ["Name", "Email", "Phone", "DOB"]}
     return mock_dict_for_csv
+
+@pytest.fixture(scope='function')
+def mock_dict_s3_file_details(): 
+    """mocked python dict output from extract_s3_details()"""
+    mock_dict = {"Scheme" : "s3",
+                "Bucket" : "test_bucket_TR_NC",
+                "Key": "test_file.csv",
+                "File_Name": "test_file.csv",
+                "File_Type": "csv"}
+    return mock_dict
+
+#"outer_folder/inner_folder/
