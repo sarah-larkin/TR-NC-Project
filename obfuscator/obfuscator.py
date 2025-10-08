@@ -16,7 +16,7 @@ s3 = boto3.client("s3")
 
 # Helper functions
 
-def validate_input_json(input_json: str) -> dict:  # return input json is valid so can be used elsewhere
+def validate_input_json(input_json: str) -> dict:
     """validate JSON string and return parsed dict if valid.
 
     Args:
@@ -28,33 +28,39 @@ def validate_input_json(input_json: str) -> dict:  # return input json is valid 
     try:
         data = json.loads(input_json)
 
-    except ValueError as error:  # TODO: check
-        logging.warning("Invalid JSON")
+    except ValueError:  # TODO: check
+        logging.error("Invalid JSON")
         raise ValueError("Invalid JSON")  #check
     
     if not isinstance(data, dict): 
         logging.warning("JSON should be a dictionary")
         raise ValueError("JSON should be a dictionary")
     
-    # optional: 
-    permitted_keys = ["file_to_obfuscate", "pii_fields"]
-    keys = list(data.keys()) 
-    incorrect_keys = []
-    missing_keys = []
+    if len(data) > 2: 
+        logging.warning("additional fields present")
 
-    for field in keys: 
-        if field not in permitted_keys:
-            incorrect_keys.append(field)
-    if incorrect_keys: 
-        logging.warning(f"Fields that are not permitted: {incorrect_keys}")
-        raise ValueError(f"Fields that are not permitted: {incorrect_keys}")
+    if len(data) < 2: 
+        logging.error("insufficient number of fields present")
 
-    for field in permitted_keys: 
-        if field not in keys: 
-            missing_keys.append(field)
-    if missing_keys: 
-        logging.warning(f"Missing Fields: {missing_keys}")
-        raise ValueError(f"Missing Fields: {missing_keys}")
+    # # optional: (if fields are fixed)
+    # permitted_keys = ["file_to_obfuscate", "pii_fields"] # TODO: find way to avoid hard coding fields
+    # keys = list(data.keys()) 
+    # incorrect_keys = []
+    # missing_keys = []
+
+    # for field in keys: 
+    #     if field not in permitted_keys:
+    #         incorrect_keys.append(field)
+    # if incorrect_keys: 
+    #     logging.warning(f"Fields that are not permitted: {incorrect_keys}")
+    #     raise ValueError(f"Fields that are not permitted: {incorrect_keys}")
+
+    # for field in permitted_keys: 
+    #     if field not in keys: 
+    #         missing_keys.append(field)
+    # if missing_keys: 
+    #     logging.warning(f"Missing Fields: {missing_keys}")
+    #     raise ValueError(f"Missing Fields: {missing_keys}")
   
     logging.info("Valid JSON and valid fields")
     return data
@@ -82,18 +88,34 @@ def extract_s3_details(verified_input: dict) -> dict:
     # file type = csv  - if extended one of the valid file types handled
     return {"Bucket" : bucket, "Key": key, "File_Name": file_name, "File_Type": file_type}
 
-def extract_fields_to_alter(verified_input: dict): 
-    try: 
-        fields = input["pii_fields"]
-
-    except TypeError as error:
-        logging.error("invalid input")  # if url or list are null
-        raise error
+def extract_fields_to_alter(verified_input: dict) -> list: 
     
-    # fields type = list of strings 
-    # not an empty list
-    # fields valid (headings)
+    fields = verified_input["pii_fields"] #TODO: check that this being hard coded is acceptable 
+    
+    #should be handled in validate_json()
+    if fields == None: 
+        logging.error("no fields present")
+        raise ValueError("no fields present")
+    
+    if len(fields) == 0: 
+        logging.error("no fields detected")
+        raise ValueError ("no fields detected")
+
+    invalid_fields = []
+    for heading in fields: 
+        if not isinstance(heading, str):
+            invalid_fields.append(heading)
+    
+    if invalid_fields: 
+        logging.error(f"The following headings are not strings: {invalid_fields}")
+        raise TypeError (f"The following headings are not strings: {invalid_fields}")
+    
+    logging.info("pii fields extracted")
     return fields
+
+# fields type = list of strings 
+    # not an empty list
+    # fields valid (headings) -> cannot be handled here? 
 
 def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
     #TODO: could this be get_file? verify bucket/file exists and extract 
@@ -133,12 +155,12 @@ def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
     # S3.Client.exceptions.NoSuchKey
     # S3.Client.exceptions.InvalidObjectState
 
-""" extension """  #not necessary? 
-# def get_json(): 
-#     pass 
+    """ extension """  #not necessary? 
+    # def get_json(): 
+    #     pass 
 
-# def get_parquet(): 
-#     pass
+    # def get_parquet(): 
+    #     pass
 
 """ alternative"""
 def convert_file_to_df(): #pass in dict? 
