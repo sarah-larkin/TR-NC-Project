@@ -145,13 +145,13 @@ def extract_fields_to_alter(verified_input: dict) -> list:
 
     # fields valid (headings) vs df -> cannot be handled here? 
 
-def get_file(verified_input: dict, s3: object) -> bytes: 
-    bucket = verified_input["Bucket"]
-    key = verified_input["Key"]
+def get_file(file_details: dict, s3: object) -> bytes: 
+    bucket = file_details["Bucket"]
+    key = file_details["Key"]
 
     try: 
         file_object = s3.get_object(Bucket=bucket, Key=key)  # -> returns dict
-        data = file_object['Body'].read()  # .read() to return bytes
+        data = file_object['Body']#.read()  # .read() to return bytes
         logging.info("file retrieved")
         return data
    
@@ -164,7 +164,7 @@ def get_file(verified_input: dict, s3: object) -> bytes:
             logging.error(f"{err.response["Error"]["Code"]} : {err.response["Error"]["Message"]}")  # eg. NoSuchBucket
         raise err
 
-    
+"""delete?"""
 def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
     #TODO: could this be get_file? verify bucket/file exists and extract 
     #would require another function to read file/access the data within
@@ -216,12 +216,15 @@ def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
     #     pass
 
 """ alternative"""
-def convert_file_to_df(): #pass in dict? 
-    #draft not completed
-    if file_type == 'csv': 
-        df = pd.read_csv(file_object["Body"])
-    # if file_type == 'json': 
-    #     df = pd.read_json(file_object["Body"])
+def convert_file_to_df(file_details: dict, file_bytes: bytes): #pass in dict and bytestream from get_file()
+    try: 
+        if file_details["File_Type"] == 'csv': 
+            df = pd.read_csv(file_bytes)
+        # if file_type == 'json': 
+        #     df = pd.read_json(file_object["Body"])
+    except pd.errors.EmptyDataError as error:
+        logging.error("the file you are trying to retrieve does not contain any data")
+        raise error
     return df
 
 def obfuscate_data(data: pd.DataFrame, fields: list) -> bytes:
