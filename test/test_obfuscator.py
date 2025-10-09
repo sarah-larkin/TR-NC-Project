@@ -519,10 +519,73 @@ class TestGetCSV:
 
 class TestConvertFileToDF: 
     def test_convert_to_df_returns_df(self, mock_csv_file_in_bucket, mock_s3_client): 
-        file_bytes = get_file(mock_csv_file_in_bucket, mock_s3_client)
-        result = convert_file_to_df(mock_csv_file_in_bucket, file_bytes) #
+        file_object = get_file(mock_csv_file_in_bucket, mock_s3_client)
+        result = convert_file_to_df(mock_csv_file_in_bucket, file_object) #
         assert isinstance(result, pd.DataFrame)
 
+    def test_returns_content_from_the_named_csv_file(self, mock_csv_file_in_bucket, mock_s3_client):
+        file_object = get_file(mock_csv_file_in_bucket, mock_s3_client)
+        df = convert_file_to_df(mock_csv_file_in_bucket, file_object)
+
+        assert list(df.columns) == ["Name", "Email", "Phone", "DOB", "Notes"]
+        # df.keys() also works
+        assert list(df.loc[0]) == [
+            "Alice",
+            "alice@example.com",
+            "+1-555-111-2222",
+            "1990-01-01",
+            "ok",
+        ]
+        assert list(df.loc[1]) == [
+            "Bob",
+            "bob_at_example.com",
+            "5551113333",
+            "1985-02-03",
+            np.nan,
+        ]
+        assert list(df.loc[2]) == [
+            "Charlie",
+            "charlie@ex.co.uk",
+            "0",
+            "01/05/1975",
+            "no action",
+        ]
+        
+
+    def test_raises_exception_if_file_is_empty(self, mock_bucket, mock_s3_client):
+        #create empty file in mock bucket 
+        mock_s3_client.put_object(Bucket=mock_bucket, Key="empty_file.csv", Body=b"")
+        
+        mock_file_details = {"Scheme" : "s3",
+                "Bucket" : mock_bucket,
+                "Key": "empty_file.csv",
+                "File_Name": "empty_file.csv",
+                "File_Type": "csv"}
+        
+        file_object = get_file(mock_file_details, mock_s3_client)
+   
+        with pytest.raises(pd.errors.EmptyDataError):
+            convert_file_to_df(mock_file_details, file_object)
+        #assert exc.value.args[0] == "No columns to parse from file"
+        # TODO: check this out further,
+        # error message could change with new versions
+
+    def test_logs_error_if_file_is_empty(self, mock_bucket, mock_s3_client, caplog): 
+        caplog.set_level(logging.ERROR)
+ 
+        mock_s3_client.put_object(Bucket=mock_bucket, Key="empty_file.csv", Body=b"")
+        mock_file_details = {"Scheme" : "s3",
+                "Bucket" : mock_bucket,
+                "Key": "empty_file.csv",
+                "File_Name": "empty_file.csv",
+                "File_Type": "csv"}
+        
+        file_object = get_file(mock_file_details, mock_s3_client)
+
+        with pytest.raises(pd.errors.EmptyDataError):
+            convert_file_to_df(mock_file_details, file_object)
+
+        assert "the file you are trying to retrieve does not contain any data" in caplog.text # incorrect to find out actual message 
 
 @pytest.mark.skip
 class TestObfuscateData:

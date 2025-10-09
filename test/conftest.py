@@ -51,10 +51,8 @@ def mock_csv_file_in_bucket(mock_s3_client, mock_dict_s3_file_details, mock_buck
     mock_s3_client.put_object(
         Bucket=mock_bucket,  #consider upload_fileobj for replicating larger file size
         Key=mock_dict_s3_file_details["Key"],
-        Body= b"""Name,Email,Phone,DOB,Notes
-            Alice,alice@example.com,+1-555-111-2222,1990-01-01,ok
-            Bob,bob_at_example.com,5551113333,1985-02-03
-            Charlie,charlie@ex.co.uk,0,01/05/1975,no action""") #byte string 
+        Body= b'Name,Email,Phone,DOB,Notes\nAlice,alice@example.com,+1-555-111-2222,1990-01-01,ok\nBob,bob_at_example.com,5551113333,1985-02-03\nCharlie,charlie@ex.co.uk,0,01/05/1975,no action'
+        ) #byte string
     return mock_dict_s3_file_details
 #consider returning a dict with {"bucket": mock_bucket, "key": file_name} if likely to need more than just the key in future tests. 
 #TODO: check if need to include more edge cases here in the body added to the csv (like in mock_df)

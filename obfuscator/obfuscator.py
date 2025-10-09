@@ -2,6 +2,7 @@ import json
 import logging
 import pandas as pd
 from urllib.parse import urlparse
+import io
 
 import boto3
 from botocore.exceptions import ClientError, ParamValidationError
@@ -151,10 +152,10 @@ def get_file(file_details: dict, s3: object) -> bytes:
 
     try: 
         file_object = s3.get_object(Bucket=bucket, Key=key)  # -> returns dict
-        data = file_object['Body']#.read()  # .read() to return bytes
+        data = file_object['Body'].read()  # .read() to return bytes
         logging.info("file retrieved")
         return data
-   
+       
     except ClientError as err:  
         if err.response["Error"]["Code"] == "NoSuchKey":
             logging.error(f"{err.response["Error"]["Code"]} : {err.response["Error"]["Message"]} -> check the file name/path")
@@ -163,68 +164,22 @@ def get_file(file_details: dict, s3: object) -> bytes:
         else: 
             logging.error(f"{err.response["Error"]["Code"]} : {err.response["Error"]["Message"]}")  # eg. NoSuchBucket
         raise err
-
-"""delete?"""
-def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
-    #TODO: could this be get_file? verify bucket/file exists and extract 
-    #would require another function to read file/access the data within
-    """access the specified S3 bucket and retrieve the file.
-
-    args:
-    bucket - retrieved from json passed to obfuscator()  # TODO: update 
-    file_name - retrieved from json passed to obfuscator() # TODO: update 
-
-    returns:
-    Pandas DataFrame
-
-    Exceptions:
-    Raises ClientError NoSuchKey if file name is not present.
-    Raises ClientError InvalidObjectState if file is archived and
-        needs to be retored prior to accessing.
-    Raises Pandas EmptyDataError if the file being retrieved is empty.
-    """
-    try:
-        csv_file_object = s3.get_object(Bucket=bucket, Key=key)  # -> returns dict
-        logging.info("csv file successfully retrieved")
-        df = pd.read_csv(csv_file_object["Body"])
-        return df
-
-    #added in: (was originally in s3 extraction part/main func)
-    except ParamValidationError as error:  # botocore exception
-            logging.error("invalid URL")
-            raise error
-
-    except pd.errors.EmptyDataError as error:
-        logging.error("the file you are trying to retrieve does not contain any data")
-        raise error
-    except ClientError as error:  
-        if error.response["error"]["code"] == "NoSuchKey":
-            logging.error("the file does not exist, check filename")
-            raise error
-        if error.response["error"]["code"] == "InvalidObjectState": 
-            logging.warning("Your file is archived, retrieve before proceeding")
-            raise error
-            # TODO: check error handling here
-    # S3.Client.exceptions.NoSuchKey
-    # S3.Client.exceptions.InvalidObjectState
-
-    """ extension """  #not necessary? 
-    # def get_json(): 
-    #     pass 
-
-    # def get_parquet(): 
-    #     pass
+    
+    
+    # TODO: check if ParamValidationError exception required
 
 """ alternative"""
-def convert_file_to_df(file_details: dict, file_bytes: bytes): #pass in dict and bytestream from get_file()
+def convert_file_to_df(file_details: dict, file_object: bytes): #pass in dict and bytestream from get_file() # TODO: confirm if file_object is bytes or bobysream? 
     try: 
         if file_details["File_Type"] == 'csv': 
-            df = pd.read_csv(file_bytes)
+            df = pd.read_csv(io.BytesIO(file_object))  # TODO: read up on io.BytesIO - pandas cannor read raw bytes 
+        #extension: 
         # if file_type == 'json': 
-        #     df = pd.read_json(file_object["Body"])
+        #     df = pd.read_json(file_object])
     except pd.errors.EmptyDataError as error:
         logging.error("the file you are trying to retrieve does not contain any data")
         raise error
+
     return df
 
 def obfuscate_data(data: pd.DataFrame, fields: list) -> bytes:
@@ -297,6 +252,62 @@ def obfuscator(input_json: json) -> bytes:
     else:
         logging.error("invalid document type")
         #raise exception
+
+
+
+
+
+"""delete?"""
+def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
+    #TODO: could this be get_file? verify bucket/file exists and extract 
+    #would require another function to read file/access the data within
+    """access the specified S3 bucket and retrieve the file.
+
+    args:
+    bucket - retrieved from json passed to obfuscator()  # TODO: update 
+    file_name - retrieved from json passed to obfuscator() # TODO: update 
+
+    returns:
+    Pandas DataFrame
+
+    Exceptions:
+    Raises ClientError NoSuchKey if file name is not present.
+    Raises ClientError InvalidObjectState if file is archived and
+        needs to be retored prior to accessing.
+    Raises Pandas EmptyDataError if the file being retrieved is empty.
+    """
+    try:
+        csv_file_object = s3.get_object(Bucket=bucket, Key=key)  # -> returns dict
+        logging.info("csv file successfully retrieved")
+        df = pd.read_csv(csv_file_object["Body"])
+        return df
+
+    #added in: (was originally in s3 extraction part/main func)
+    except ParamValidationError as error:  # botocore exception
+            logging.error("invalid URL")
+            raise error
+
+    except pd.errors.EmptyDataError as error:
+        logging.error("the file you are trying to retrieve does not contain any data")
+        raise error
+    except ClientError as error:  
+        if error.response["error"]["code"] == "NoSuchKey":
+            logging.error("the file does not exist, check filename")
+            raise error
+        if error.response["error"]["code"] == "InvalidObjectState": 
+            logging.warning("Your file is archived, retrieve before proceeding")
+            raise error
+            # TODO: check error handling here
+    # S3.Client.exceptions.NoSuchKey
+    # S3.Client.exceptions.InvalidObjectState
+
+    """ extension """  #not necessary? 
+    # def get_json(): 
+    #     pass 
+
+    # def get_parquet(): 
+    #     pass
+
 
 
 
