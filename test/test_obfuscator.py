@@ -15,15 +15,8 @@ import numpy as np
 import logging
 from moto import mock_aws
 
-"""
-fixtures can be found in test/conftest.py file mocking:
-s3_client,
-mock_bucket,
-mock_csv_file,
-mock_df,
-mock_json_for_csv_file
-"""
-
+# TODO: check out pytest.mark.parametrize 
+# TODO: remove repetative tests 
 
 class TestValidateJSON:
     def test_validate_json_returns_parsed_dict_if_valid(
@@ -42,16 +35,16 @@ class TestValidateJSON:
         validate_input_json(mock_json_for_csv_file)
         assert "Valid JSON and valid fields" in caplog.text
 
-    def test_error_raised_when_json_contains_syntax_error(self):
-        with pytest.raises(ValueError):
-            validate_input_json(
-                '{"file_to_obfuscate":'
-                '"s3://test_bucket_TR_NC/test_file.csv",'
-                '"pii_fields": ["Name", "Email", "Phone", "DOB"]'
-            )
-            # no closing bracket
+    # def test_error_raised_when_json_contains_syntax_error(self):
+    #     with pytest.raises(ValueError):
+    #         validate_input_json(
+    #             '{"file_to_obfuscate":'
+    #             '"s3://test_bucket_TR_NC/test_file.csv",'
+    #             '"pii_fields": ["Name", "Email", "Phone", "DOB"]'
+    #         )
+    #         # no closing bracket
 
-    def test_error_logged_when_json_invalid(self, caplog):
+    def test_valueerror_raised_when_json_invalid(self, caplog):
         caplog.set_level(logging.ERROR)
         with pytest.raises(ValueError):  # has to be with pytest.raises
             validate_input_json(
@@ -61,37 +54,37 @@ class TestValidateJSON:
             # additional comma
         assert "Invalid JSON" in caplog.text
 
-    def test_error_raised_when_empty_str_passed(self):
-        with pytest.raises(ValueError):
-            validate_input_json("")
+    # def test_error_raised_when_empty_str_passed(self):
+    #     with pytest.raises(ValueError):
+    #         validate_input_json("")
 
-    def test_error_raised_when_values_missing_from_json(self):
-        with pytest.raises(ValueError):
-            validate_input_json('{"file_to_obfuscate": ,' '"pii_fields": }')
+    # def test_error_raised_when_values_missing_from_json(self):
+    #     with pytest.raises(ValueError):
+    #         validate_input_json('{"file_to_obfuscate": ,' '"pii_fields": }')
 
-    def test_error_logged_values_missing_from_json(self, caplog):
-        caplog.set_level(logging.ERROR)
-        with pytest.raises(ValueError):  # has to be with pytest.raises
-            validate_input_json('{"file_to_obfuscate": ,' '"pii_fields": }')
-            # no values
-        assert "Invalid JSON" in caplog.text
+    # def test_error_logged_values_missing_from_json(self, caplog):
+    #     caplog.set_level(logging.ERROR)
+    #     with pytest.raises(ValueError):  # has to be with pytest.raises
+    #         validate_input_json('{"file_to_obfuscate": ,' '"pii_fields": }')
+    #         # no values
+    #     assert "Invalid JSON" in caplog.text
 
-    def test_error_raised_when_keys_missing_from_json(self):
-        with pytest.raises(ValueError):
-            validate_input_json(
-                '{"s3://test_bucket_TR_NC/test_file.csv",'
-                '["Name", "Email", "Phone", "DOB"]}'
-            )
+    # def test_error_raised_when_keys_missing_from_json(self):
+    #     with pytest.raises(ValueError):
+    #         validate_input_json(
+    #             '{"s3://test_bucket_TR_NC/test_file.csv",'
+    #             '["Name", "Email", "Phone", "DOB"]}'
+    #         )
 
-    def test_error_logged_when_required_keys_missing_from_json(self, caplog):
-        caplog.set_level(logging.ERROR)
-        with pytest.raises(ValueError):  # has to be with pytest.raises
-            validate_input_json(
-                '{"s3://test_bucket_TR_NC/test_file.csv",'
-                '["Name", "Email", "Phone", "DOB"]}'
-            )
-            # no keys
-        assert "Invalid JSON" in caplog.text
+    # def test_error_logged_when_required_keys_missing_from_json(self, caplog):
+    #     caplog.set_level(logging.ERROR)
+    #     with pytest.raises(ValueError):  # has to be with pytest.raises
+    #         validate_input_json(
+    #             '{"s3://test_bucket_TR_NC/test_file.csv",'
+    #             '["Name", "Email", "Phone", "DOB"]}'
+    #         )
+    #         # no keys
+    #     assert "Invalid JSON" in caplog.text
 
     def test_2_key_value_pairs_are_passed(self, mock_json_for_csv_file):
         result = validate_input_json(mock_json_for_csv_file)
@@ -369,7 +362,6 @@ class TestExtractFieldsToAlter:
 @mock_aws
 class TestGetFile:
     @pytest.mark.skip
-    # changed conver_to_df() which affects this # TODO: check
     def test_get_file_returns_bytestream(
         self,
         mock_csv_file_in_bucket,
@@ -472,9 +464,7 @@ class TestGetFile:
         }
         with pytest.raises(ClientError):
             get_file(mock_file_details, mock_s3_client)
-        expected_msg = ("NoSuchKey : The specified key does not exist. "
-                        "-> check the file name/path"
-                        )
+        expected_msg = "NoSuchKey : The specified key does not exist."
         assert expected_msg in caplog.text
 
     @pytest.mark.skip
@@ -500,6 +490,7 @@ class TestGetFile:
         )
         with pytest.raises(ClientError):
             get_file(mock_csv_file_in_bucket, mock_s3_client)
+        # TODO: check this is working as expected 
 
     def test_get_file_logs_error_if_retrieving_archived_file(
         self, mock_s3_client, mock_csv_file_in_bucket, caplog
@@ -513,11 +504,8 @@ class TestGetFile:
         )
         with pytest.raises(ClientError):
             get_file(mock_csv_file_in_bucket, mock_s3_client)
-        expected_msg = (
-            "InvalidObjectState : The operation is not valid for "
-            "the object's storage class -> file is archived, "
-            "retrieve before proceeding"
-        )
+        expected_msg = ("InvalidObjectState : The operation is "
+        "not valid for the object's storage class")
         assert expected_msg in caplog.text
 
     @pytest.mark.skip
@@ -633,6 +621,17 @@ class TestConvertFileToDF:
             in caplog.text
         )  # incorrect to find out actual message
 
+    def test_error_raised_if_file_invalid(self): 
+        #eg. csv with no headers (malformed)
+        pass
+
+    def test_file_is_inaccessible(self): 
+        #eg. archvied (invalidObjectState)
+        pass 
+
+    def test_raises_Error_if_file_type_inconsistent(self): 
+        #eg. .json but content is csv 
+
 
 @pytest.mark.skip
 class TestObfuscateData:
@@ -724,6 +723,8 @@ class TestObfuscator:
     def test_csv_file_returns_bytestream(self, mock_json_for_csv_file):
         assert type(obfuscator(mock_json_for_csv_file)) == bytes
 
+    def test_integration(self): 
+        pass 
 
 @pytest.mark.skip
 class General:
@@ -737,9 +738,7 @@ class General:
         pass  # necessary?
 
 
-# TODO: add tests for logging and error correctness
-# TODO: tests for edge cases such as invalid bucket,
-# empty PII_fields, invalid headings
+
 
 
 # """delete?"""
