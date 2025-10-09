@@ -145,9 +145,9 @@ def extract_fields_to_alter(verified_input: dict) -> list:
 
     # fields valid (headings) vs df -> cannot be handled here? 
 
-def get_file(file_details: dict, s3: object) -> bytes: 
-    bucket = file_details["Bucket"]
-    key = file_details["Key"]
+def get_file(verified_input: dict, s3: object) -> bytes: 
+    bucket = verified_input["Bucket"]
+    key = verified_input["Key"]
 
     try: 
         file_object = s3.get_object(Bucket=bucket, Key=key)  # -> returns dict
@@ -156,14 +156,15 @@ def get_file(file_details: dict, s3: object) -> bytes:
         return data
    
     except ClientError as err:  
-        #if err.response["Error"]["Code"] == "NoSuchBucket":
-        logging.error(f"{err.response["Error"]["Code"]} : {err.response["Error"]["Message"]}")
+        if err.response["Error"]["Code"] == "NoSuchKey":
+            logging.error(f"{err.response["Error"]["Code"]} : {err.response["Error"]["Message"]} -> check the file name/path")
+        if err.response["Error"]["Code"] == "InvalidObjectState": 
+            logging.error(f"{err.response["Error"]["Code"]} : {err.response["Error"]["Message"]} -> file is archived, retrieve before proceeding")
+        else: 
+            logging.error(f"{err.response["Error"]["Code"]} : {err.response["Error"]["Message"]}")  # eg. NoSuchBucket
         raise err
 
     
-    #NoSuchBucket
-    #NoSuchKey
-
 def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
     #TODO: could this be get_file? verify bucket/file exists and extract 
     #would require another function to read file/access the data within
@@ -219,8 +220,8 @@ def convert_file_to_df(): #pass in dict?
     #draft not completed
     if file_type == 'csv': 
         df = pd.read_csv(file_object["Body"])
-    if file_type == 'json': 
-        df = pd.read_json(file_object["Body"])
+    # if file_type == 'json': 
+    #     df = pd.read_json(file_object["Body"])
     return df
 
 def obfuscate_data(data: pd.DataFrame, fields: list) -> bytes:

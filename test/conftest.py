@@ -131,15 +131,5 @@ def mock_dict_for_csv_file():  # TODO: update name and tests
     mock_dict_for_csv = {"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv", "pii_fields": ["Name", "Email", "Phone", "DOB"]}
     return mock_dict_for_csv
 
-# @pytest.fixture(scope='function')
-# def mock_create_bucket_and_put_csv(mock_bucket, mock_s3_client, mock_dict_s3_file_details): 
-#     mock_s3_client.put_object(
-#         Bucket=mock_bucket,
-#         Key=mock_dict_s3_file_details["Key"],
-#         Body=b"""Name,Email,Phone,DOB,Notes
-#             Alice,alice@example.com,+1-555-111-2222,1990-01-01,ok
-#             Bob,bob_at_example.com,5551113333,1985-02-03
-#             Charlie,charlie@ex.co.uk,0,01/05/1975,no action"""
-#     )
-#     return 
+
 

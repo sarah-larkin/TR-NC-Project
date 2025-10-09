@@ -351,65 +351,76 @@ class TestGetFile:
         assert "NoSuchBucket : The specified bucket does not exist" in caplog.text
 
     def test_get_file_raises_clienterror_error_when_file_does_not_exist(self, mock_s3_client, mock_csv_file_in_bucket):
-         #arrange - mocked bucket and file from fixture
         valid_bucket = mock_csv_file_in_bucket["Bucket"]
   
         mock_file_details = {"Scheme" : "s3",
                 "Bucket" : valid_bucket,
-                "Key": "WRONG_file.csv",
-                "File_Name": "WRONG_file.csv",  #file does not exist in mock bucket
+                "Key": "WRONG_file.csv",  #file does not exist in mock bucket
+                "File_Name": "WRONG_file.csv",  
                 "File_Type": "csv"}
         with pytest.raises(ClientError): 
             get_file(mock_file_details, mock_s3_client)
+        
+        # incorrect_key = "incorrect_filename.csv"
+        # with pytest.raises(ClientError) as exc:
+        #     get_file(mock_bucket, incorrect_key, mock_s3_client)
+        # err = exc.value.response["Error"]
+        # assert err["Code"] == "NoSuchKey"
        
-       
-    def test_get_file_logs_error_if_file_does_not_exist(self): 
-        pass
-      
-    """#testing specific exception code is NoSuchKey
-        #for missing/incorrect file name
-        incorrect_key = "incorrect_filename.csv"
-        with pytest.raises(ClientError) as exc:
-            get_file(mock_bucket, incorrect_key, mock_s3_client)
-        err = exc.value.response["Error"]
-        assert err["Code"] == "NoSuchKey"""
-
-        #    """testing get_csv returns a client error
-        # for missing/incorrect file name"""
-        # non_file = "nonexistent_file.csv"
-        # with pytest.raises(ClientError):
-        #     get_file(mock_bucket, non_file, mock_s3_client)
-
-    def test_get_file_logs_error_if_bucket_does_not_exist(self): #ClientError
-        pass
-
+    def test_get_file_logs_error_if_file_does_not_exist(self, mock_s3_client, mock_csv_file_in_bucket, caplog): 
+        caplog.set_level(logging.ERROR)
+        valid_bucket = mock_csv_file_in_bucket["Bucket"]
+  
+        mock_file_details = {"Scheme" : "s3",
+                "Bucket" : valid_bucket,
+                "Key": "WRONG_file.csv",  #file does not exist in mock bucket
+                "File_Name": "WRONG_file.csv",  
+                "File_Type": "csv"}
+        with pytest.raises(ClientError): 
+            get_file(mock_file_details, mock_s3_client)
+        assert "NoSuchKey : The specified key does not exist. -> check the file name/path" in caplog.text
+    
+    @pytest.mark.skip
     def test_get_file_raises_error_if_denied_access_to_bucket(self): #ClientError
         pass
-
+    
+    @pytest.mark.skip
     def test_get_file_logs_error_if_denied_access_to_bucket(self):
         pass
 
+    #empty file will be handled in convert_to_df() so removed from here
+    
+    def test_get_file_raises_error_if_retrieving_archived_file(self, mock_s3_client, mock_csv_file_in_bucket): 
+        #arrange 
+        mock_s3_client.put_object(
+            Bucket="test_bucket_TR_NC",
+            Key="test_file.csv",
+            Body=b"Some data",
+            StorageClass="GLACIER"
+        )
+        with pytest.raises(ClientError): 
+            get_file(mock_csv_file_in_bucket, mock_s3_client)
+        
+
+    def test_get_file_logs_error_if_retrieving_archived_file(self, mock_s3_client, mock_csv_file_in_bucket, caplog): 
+        caplog.set_level(logging.ERROR)
+        mock_s3_client.put_object(
+            Bucket="test_bucket_TR_NC",
+            Key="test_file.csv",
+            Body=b"Some data",
+            StorageClass="GLACIER"
+        )
+        with pytest.raises(ClientError): 
+            get_file(mock_csv_file_in_bucket, mock_s3_client)
+        assert "InvalidObjectState : The operation is not valid for the object's storage class -> file is archived, retrieve before proceeding" in caplog.text
+
     @pytest.mark.skip
-    def test_get_file_raises_error_if_no_data_in_file(self, mock_s3_client, mock_bucket):  #mock with empty byte string -> ValueError
-        empty_file = "empty_file.csv"
-        mock_s3_client.put_object(Bucket=mock_bucket, Key=empty_file, Body=b"")
-        with pytest.raises(pd.errors.EmptyDataError) as exc:
-            get_file(mock_bucket, empty_file, mock_s3_client)
-        assert exc.value.args[0] == "No columns to parse from file"
-        # TODO: check this out further,
-        # error message could change with new versions
-
-    def test_get_file_logs_error_if_no_data_in_file(self):
-        pass
-
-    def test_get_file_raises_error_if_retrieving_archived_file(self): 
-        pass
-
-    def test_get_file_logs_error_if_retrieving_archived_file(self): 
-        pass
-
-    def test_integration(self): 
+    def test_integration(self, mock_json_for_csv_file, mock_dict_for_csv_file): 
         #validate_json -> extract_s3_details -> get_file 
+        validate_input_json(mock_json_for_csv_file)
+        extract_s3_details(mock_dict_for_csv_file)
+        extract_fields_to_alter(mock_dict_for_csv_file)
+        get_file(mock_dict_for_csv_file)
         pass
     
 
