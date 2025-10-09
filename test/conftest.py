@@ -44,14 +44,17 @@ def mock_dict_s3_file_details():
 #"outer_folder/inner_folder/
 
 @pytest.fixture(scope='function')
-def mock_csv_file(mock_s3_client, mock_dict_s3_file_details, mock_bucket): 
-    """mocked csv file
+def mock_csv_file_in_bucket(mock_s3_client, mock_dict_s3_file_details, mock_bucket): 
+    """mocked csv file in s3 bucket, returns dict 
     (additional edge cases added to mock_df below)"""
     #file_name =    #'test_file.csv'
     mock_s3_client.put_object(
-        Bucket=mock_dict_s3_file_details["Bucket"],  #consider upload_fileobj for replicating larger file size
+        Bucket=mock_bucket,  #consider upload_fileobj for replicating larger file size
         Key=mock_dict_s3_file_details["Key"],
-        Body= b'Name,Email,Phone,DOB,Notes\nAlice,alice@example.com,+1-555-111-2222,1990-01-01,ok\nBob,bob_at_example.com,5551113333,1985-02-03\nCharlie,charlie@ex.co.uk,0,01/05/1975,no action') #byte string 
+        Body= b"""Name,Email,Phone,DOB,Notes
+            Alice,alice@example.com,+1-555-111-2222,1990-01-01,ok
+            Bob,bob_at_example.com,5551113333,1985-02-03
+            Charlie,charlie@ex.co.uk,0,01/05/1975,no action""") #byte string 
     return mock_dict_s3_file_details
 #consider returning a dict with {"bucket": mock_bucket, "key": file_name} if likely to need more than just the key in future tests. 
 #TODO: check if need to include more edge cases here in the body added to the csv (like in mock_df)
@@ -128,5 +131,15 @@ def mock_dict_for_csv_file():  # TODO: update name and tests
     mock_dict_for_csv = {"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv", "pii_fields": ["Name", "Email", "Phone", "DOB"]}
     return mock_dict_for_csv
 
-
+# @pytest.fixture(scope='function')
+# def mock_create_bucket_and_put_csv(mock_bucket, mock_s3_client, mock_dict_s3_file_details): 
+#     mock_s3_client.put_object(
+#         Bucket=mock_bucket,
+#         Key=mock_dict_s3_file_details["Key"],
+#         Body=b"""Name,Email,Phone,DOB,Notes
+#             Alice,alice@example.com,+1-555-111-2222,1990-01-01,ok
+#             Bob,bob_at_example.com,5551113333,1985-02-03
+#             Charlie,charlie@ex.co.uk,0,01/05/1975,no action"""
+#     )
+#     return 
 

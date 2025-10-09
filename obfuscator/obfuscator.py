@@ -149,12 +149,16 @@ def get_file(file_details: dict, s3: object) -> bytes:
     bucket = file_details["Bucket"]
     key = file_details["Key"]
 
-    # try: 
-    file_object = s3.get_object(Bucket=bucket, Key=key)  # -> returns dict
-    data = file_object['Body'].read()  # .read() to return bytes
-    logging.info("file retrieved")
-    return data
-    # except: 
+    try: 
+        file_object = s3.get_object(Bucket=bucket, Key=key)  # -> returns dict
+        data = file_object['Body'].read()  # .read() to return bytes
+        logging.info("file retrieved")
+        return data
+   
+    except ClientError as err:  
+        #if err.response["Error"]["Code"] == "NoSuchBucket":
+        logging.error(f"{err.response["Error"]["Code"]} : {err.response["Error"]["Message"]}")
+        raise err
 
     
     #NoSuchBucket
@@ -166,8 +170,8 @@ def get_csv(bucket: str, key: str, s3: object) -> pd.DataFrame:
     """access the specified S3 bucket and retrieve the file.
 
     args:
-    bucket - retrieved from json passed to obfuscator()
-    file_name - retrieved from json passed to obfuscator()
+    bucket - retrieved from json passed to obfuscator()  # TODO: update 
+    file_name - retrieved from json passed to obfuscator() # TODO: update 
 
     returns:
     Pandas DataFrame
