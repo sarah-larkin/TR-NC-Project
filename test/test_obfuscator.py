@@ -17,6 +17,7 @@ from moto import mock_aws
 
 # TODO: check out pytest.mark.parametrize 
 # TODO: remove repetative tests 
+# TODO: combine logging and raising tests 
 
 class TestValidateJSON:
     def test_validate_json_returns_dict_if_json_valid(

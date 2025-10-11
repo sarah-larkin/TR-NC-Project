@@ -69,8 +69,9 @@ def validate_input_json(input_json: str) -> dict:
     #     logging.warning(f"Missing Fields: {missing_keys}")
     #     raise ValueError(f"Missing Fields: {missing_keys}")
 
+    verified_input = data 
     logging.info("Valid JSON and valid fields")
-    return data
+    return verified_input
 
 
     # TODO: complete last 2 tests for this
@@ -257,7 +258,6 @@ def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
     logger.warning(f"Invalid headings identified: {invalid_headings}")
     return df
 
-
 # Primary function
 def obfuscator(input_json: json) -> bytes:
     """
@@ -280,12 +280,12 @@ def obfuscator(input_json: json) -> bytes:
     exceptions: # TODO: list exceptions
     """
     # TODO: update function to incorporate all helper funcs and return bytes
-    validate_input_json()
-    extract_s3_details()
-    extract_fields_to_alter()
-    get_file()
-    convert_file_to_df()  # TODO: this where file type is handled?
-    obfuscate_data()
+    verified_input = validate_input_json(input_json)
+    file_details = extract_s3_details(verified_input)
+    fields = extract_fields_to_alter(verified_input)
+    data = get_file(file_details, s3)
+    data_df = convert_file_to_df(file_details, data)  # TODO: this where file type is handled?
+    obf_df = obfuscate_data(data_df, fields)
     pass
 
 
