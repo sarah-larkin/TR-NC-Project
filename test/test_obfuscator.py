@@ -19,72 +19,31 @@ from moto import mock_aws
 # TODO: remove repetative tests 
 
 class TestValidateJSON:
-    def test_validate_json_returns_parsed_dict_if_valid(
+    def test_validate_json_returns_dict_if_json_valid(
             self,
-            mock_json_for_csv_file):
+            mock_json_for_csv_file,
+            caplog
+        ):
+        caplog.set_level(logging.INFO)
         result = validate_input_json(mock_json_for_csv_file)
         assert result == {
             "file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv",
             "pii_fields": ["Name", "Email", "Phone", "DOB"],
         }
+        assert "Valid JSON and valid fields" in caplog.text   
 
-    def test_success_msg_logged_when_valid_json_passed(
-        self, caplog, mock_json_for_csv_file
-    ):
-        caplog.set_level(logging.INFO)
-        validate_input_json(mock_json_for_csv_file)
-        assert "Valid JSON and valid fields" in caplog.text
-
-    # def test_error_raised_when_json_contains_syntax_error(self):
-    #     with pytest.raises(ValueError):
-    #         validate_input_json(
-    #             '{"file_to_obfuscate":'
-    #             '"s3://test_bucket_TR_NC/test_file.csv",'
-    #             '"pii_fields": ["Name", "Email", "Phone", "DOB"]'
-    #         )
-    #         # no closing bracket
-
-    def test_valueerror_raised_when_json_invalid(self, caplog):
+    def test_JSONDecodeError_raised_when_json_invalid(self, caplog): #TODO: check!!
         caplog.set_level(logging.ERROR)
         with pytest.raises(ValueError):  # has to be with pytest.raises
             validate_input_json(
                 '{"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv",'
                 '"pii_fields": ["Name", "Email", "Phone", "DOB"],}'
             )
-            # additional comma
-        assert "Invalid JSON" in caplog.text
+            # additional comma, 
+            # (no closing bracket)
+            assert "Invalid JSON:" in caplog.text
 
-    # def test_error_raised_when_empty_str_passed(self):
-    #     with pytest.raises(ValueError):
-    #         validate_input_json("")
-
-    # def test_error_raised_when_values_missing_from_json(self):
-    #     with pytest.raises(ValueError):
-    #         validate_input_json('{"file_to_obfuscate": ,' '"pii_fields": }')
-
-    # def test_error_logged_values_missing_from_json(self, caplog):
-    #     caplog.set_level(logging.ERROR)
-    #     with pytest.raises(ValueError):  # has to be with pytest.raises
-    #         validate_input_json('{"file_to_obfuscate": ,' '"pii_fields": }')
-    #         # no values
-    #     assert "Invalid JSON" in caplog.text
-
-    # def test_error_raised_when_keys_missing_from_json(self):
-    #     with pytest.raises(ValueError):
-    #         validate_input_json(
-    #             '{"s3://test_bucket_TR_NC/test_file.csv",'
-    #             '["Name", "Email", "Phone", "DOB"]}'
-    #         )
-
-    # def test_error_logged_when_required_keys_missing_from_json(self, caplog):
-    #     caplog.set_level(logging.ERROR)
-    #     with pytest.raises(ValueError):  # has to be with pytest.raises
-    #         validate_input_json(
-    #             '{"s3://test_bucket_TR_NC/test_file.csv",'
-    #             '["Name", "Email", "Phone", "DOB"]}'
-    #         )
-    #         # no keys
-    #     assert "Invalid JSON" in caplog.text
+    # TODO: add in test raises valueerror if valid JSON but not a dict 
 
     def test_2_key_value_pairs_are_passed(self, mock_json_for_csv_file):
         result = validate_input_json(mock_json_for_csv_file)
@@ -100,7 +59,7 @@ class TestValidateJSON:
         assert "additional fields present" in caplog.text
 
     def test_error_logged_if_not_enough_fields(self, caplog):
-        caplog.set_level(logging.ERROR)
+        caplog.set_level(logging.WARNING)
         input_json = '{"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
         validate_input_json(input_json)
         assert "insufficient number of fields present" in caplog.text
@@ -125,7 +84,7 @@ class TestValidateJSON:
         assert expected_msg in caplog.text
 
     @pytest.mark.skip
-    def test_error_raised_if_required_keys_do_not_present(self, caplog):
+    def test_error_raised_if_required_keys_are_not_present(self, caplog):
         caplog.set_level(logging.WARNING)
         input_json = '{"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
         validate_input_json(input_json)
@@ -456,9 +415,6 @@ class TestGetFile:
     # TODO: check this is working as expected 
 
 
-        
-
-
 class TestConvertFileToDF:
     def test_convert_to_df_returns_df(
             self,
@@ -674,95 +630,3 @@ class General:
     def test_runtime_under_1m_with_file_up_to_1mb(self):
         pass  # necessary?
 
-
-
-
-
-# """delete?"""
-# @pytest.mark.skip
-# class TestGetCSV:
-#     def test_returns_df(self, mock_bucket, mock_csv_file, mock_s3_client):
-#         response = get_csv(mock_bucket, mock_csv_file, mock_s3_client)
-#         assert isinstance(response, pd.DataFrame)
-
-#     def test_returns_content_from_the_named_csv_file(
-#         self, mock_bucket, mock_csv_file, mock_s3_client
-#     ):
-#         df = get_csv(mock_bucket, mock_csv_file, mock_s3_client)
-#         assert list(df.columns) == ["Name", "Email", "Phone", "DOB", "Notes"]
-#         # df.keys() also works
-#         assert list(df.loc[0]) == [
-#             "Alice",
-#             "alice@example.com",
-#             "+1-555-111-2222",
-#             "1990-01-01",
-#             "ok",
-#         ]
-#         assert list(df.loc[1]) == [
-#             "Bob",
-#             "bob_at_example.com",
-#             "5551113333",
-#             "1985-02-03",
-#             np.nan,
-#         ]
-#         assert list(df.loc[2]) == [
-#             "Charlie",
-#             "charlie@ex.co.uk",
-#             "0",
-#             "01/05/1975",
-#             "no action",
-#         ]
-#     #added in:
-#     def test_returns_error_msg_if_invalid_URL(self):
-#             with pytest.raises(ParamValidationError):
-#                 extract_s3_details(
-#                     '{"file_to_obfuscate": '
-#                     '"test_bucket_TR_NC/test_file.csv",'
-#                     '"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
-#                 )
-#                 # missing s3://
-
-#     def test_get_csv_raises_exception_if_csv_is_empty(self, mock_bucket, mock_s3_client):
-#         empty_file = "empty_file.csv"
-#         mock_s3_client.put_object(Bucket=mock_bucket, Key=empty_file, Body=b"")
-#         with pytest.raises(pd.errors.EmptyDataError) as exc:
-#             get_csv(mock_bucket, empty_file, mock_s3_client)
-#         assert exc.value.args[0] == "No columns to parse from file"
-#         # TODO: check this out further,
-#         # error message could change with new versions
-
-#     def test_raises_clienterror_if_file_does_not_exist(self, mock_bucket, mock_s3_client):
-#         """testing get_csv returns a client error
-#         for missing/incorrect file name"""
-#         non_file = "nonexistent_file.csv"
-#         with pytest.raises(ClientError):
-#             get_csv(mock_bucket, non_file, mock_s3_client)
-
-#     def test_clienterror_error_code_when_file_does_not_exist(
-#         self, mock_bucket, mock_s3_client
-#     ):
-#         """testing specific exception code is NoSuchKey
-#         for missing/incorrect file name"""
-#         incorrect_key = "incorrect_filename.csv"
-#         with pytest.raises(ClientError) as exc:
-#             get_csv(mock_bucket, incorrect_key, mock_s3_client)
-#         err = exc.value.response["Error"]
-#         assert err["Code"] == "NoSuchKey"
-
-#     # def test_file_type(self): #better name needed
-#     #     #not uploading JSON with .csv extension
-#     #     pass
-
-#     # def test_file_has_missing_data(self):
-#     #     #eg. ID = int, name = str
-#     #     #necessary here?
-#     #     pass
-
-#     # def test_columns_contain_correct_data_type(self):
-#     #     #is this necessary?
-#     #     pass
-
-#     """#TODO:check approriate error is raised/logged if error occurs
-#         #Exceptions:
-#         # S3.Client.exceptions.NoSuchKey
-#         # S3.Client.exceptions.InvalidObjectState"""
