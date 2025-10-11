@@ -31,31 +31,25 @@ def mock_bucket(mock_s3_client):
     )
     return name
 
-@pytest.fixture(scope='function')
-def mock_dict_s3_file_details(): 
-    """mocked python dict output from extract_s3_details()"""
-    mock_dict = {"Scheme" : "s3",
-                "Bucket" : "test_bucket_TR_NC",
-                "Key": "test_file.csv",
-                "File_Name": "test_file.csv",
-                "File_Type": "csv"}
-    return mock_dict
-
-#"outer_folder/inner_folder/
 
 @pytest.fixture(scope='function')
-def mock_csv_file_in_bucket(mock_s3_client, mock_dict_s3_file_details, mock_bucket): 
+def mock_csv_file_details(mock_s3_client, mock_bucket): # TODO: could add mock bucket? 
     """mocked csv file in s3 bucket, returns dict 
     (additional edge cases added to mock_df below)"""
     #file_name =    #'test_file.csv'
     mock_s3_client.put_object(
         Bucket=mock_bucket,  #consider upload_fileobj for replicating larger file size
-        Key=mock_dict_s3_file_details["Key"],
+        Key="test_file.csv",
         Body= b'Name,Email,Phone,DOB,Notes\nAlice,alice@example.com,+1-555-111-2222,1990-01-01,ok\nBob,bob_at_example.com,5551113333,1985-02-03\nCharlie,charlie@ex.co.uk,0,01/05/1975,no action'
         ) #byte string
-    return mock_dict_s3_file_details
-#consider returning a dict with {"bucket": mock_bucket, "key": file_name} if likely to need more than just the key in future tests. 
-#TODO: check if need to include more edge cases here in the body added to the csv (like in mock_df)
+    mock_details = {"Scheme" : "s3",
+                "Bucket" : "test_bucket_TR_NC",
+                "Key": "test_file.csv",  #could include 'folder' path eg. outer_folder/inner_folder/
+                "File_Name": "test_file.csv",
+                "File_Type": "csv"}
+    return mock_details
+ 
+#TODO: mock_csv_file_detaile(): check if need to include more edge cases here in the body added to the csv (like in mock_df)
 
 @pytest.fixture(scope='function')
 def mock_df(): 

@@ -162,6 +162,20 @@ def extract_fields_to_alter(verified_input: dict) -> list:
     # fields valid (headings) vs df -> cannot be handled here?
 
 def get_file(file_details: dict, s3: object) -> bytes:
+    """takes dict from extract_s3_details() and retrieves named file from named s3 bucket
+
+    Args:
+        file_details (dict): output dict from extract_s3_details()
+        s3 (object): boto3 s3 client 
+
+    Raises:
+        ClientError:"NoSuchBucket" - bucket does not exist/incorrect bucket name 
+                    "NoSuchKey" - file name/path does not exist/ incorrect naming 
+                    "InvalidObjectState" - file is archived and needs to be retrieved first
+
+    Returns:
+        bytes: returns bytes object ready to be converted to DataFrame in convert_file_to_df()
+    """
     bucket = file_details["Bucket"]
     key = file_details["Key"]
 
@@ -172,14 +186,12 @@ def get_file(file_details: dict, s3: object) -> bytes:
         return data
 
     except ClientError as err:
-            logging.error(
-                f"{err.response["Error"]["Code"]} : "
-                f"{err.response["Error"]["Message"]}"
-            )  # eg. NoSuchBucket, "NoSuchKey", "InvalidObjectState"
-    raise err
+        logging.error(
+            f"Unable to retrieve file -> {err.response["Error"]["Code"]} : {err.response["Error"]["Message"]}"
+        ) 
+        raise err
 
-    # TODO: check if ParamValidationError exception required
-    # TODO: simplify the exception above? 
+    # TODO: get_file() add ParamValidationError handling? 
 
 def convert_file_to_df(
     file_details: dict, data: bytes

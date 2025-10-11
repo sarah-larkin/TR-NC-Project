@@ -361,77 +361,57 @@ class TestExtractFieldsToAlter:
 
 @mock_aws
 class TestGetFile:
-    @pytest.mark.skip
     def test_get_file_returns_bytestream(
         self,
-        mock_csv_file_in_bucket,
+        mock_csv_file_details,
         mock_s3_client
     ):
-        result = get_file(mock_csv_file_in_bucket, mock_s3_client)
+        result = get_file(mock_csv_file_details, mock_s3_client)
         assert isinstance(result, bytes)
 
     def test_get_file_logs_success_msg(
-        self, mock_csv_file_in_bucket, mock_s3_client, caplog
+        self, mock_csv_file_details, mock_s3_client, caplog
     ):
         caplog.set_level(logging.INFO)
-        get_file(mock_csv_file_in_bucket, mock_s3_client)
+        get_file(mock_csv_file_details, mock_s3_client)
         assert "file retrieved" in caplog.text
 
-    @pytest.mark.skip
-    # changed conver_to_df() which affects this # TODO: check
+    # TODO: how to get this passing AND PEP8 compliant? 
     def test_get_file_return_content_of_csv_file(
-        self, mock_csv_file_in_bucket, mock_s3_client
+        self, mock_csv_file_details, mock_s3_client
     ):
-        output = get_file(mock_csv_file_in_bucket, mock_s3_client)
-        expected = b"""Name,Email,Phone,DOB,Notes
-            Alice,alice@example.com,+1-555-111-2222,1990-01-01,ok
-            Bob,bob_at_example.com,5551113333,1985-02-03
-            Charlie,charlie@ex.co.uk,0,01/05/1975,no action"""
+        output = get_file(mock_csv_file_details, mock_s3_client)
+        expected = b'Name,Email,Phone,DOB,Notes\nAlice,alice@example.com,+1-555-111-2222,1990-01-01,ok\nBob,bob_at_example.com,5551113333,1985-02-03\nCharlie,charlie@ex.co.uk,0,01/05/1975,no action'
         assert output == expected
 
     # should not be receiving invalid URL so test removed.
     # TODO: check if ParamValidationError should be handled
 
-    def test_get_file_raises_error_if_bucket_does_not_exist(
-            self,
-            mock_s3_client,
-    ):
-        # no buckets created
-        mock_file_details = {
-            "Scheme": "s3",
-            "Bucket": "test_bucket_does_not_exist",
-            "Key": "test_file.csv",
-            "File_Name": "test_file.csv",
-            "File_Type": "csv",
-        }
-
-        with pytest.raises(ClientError):
-            get_file(mock_file_details, mock_s3_client)
-
-    def test_get_file_logs_error_if_bucket_does_not_exist(
+    def test_get_file_raises_ClientError_with_log_if_bucket_does_not_exist(
             self,
             mock_s3_client,
             caplog
     ):
-        caplog.set_level(logging.ERROR)
         # no buckets created
-        mock_file_details = {
+        test_file_details = {
             "Scheme": "s3",
             "Bucket": "test_bucket_does_not_exist",
             "Key": "test_file.csv",
             "File_Name": "test_file.csv",
             "File_Type": "csv",
         }
-        with pytest.raises(ClientError):
-            get_file(mock_file_details, mock_s3_client)
 
-        expected_msg = "NoSuchBucket : The specified bucket does not exist"
+        with pytest.raises(ClientError):
+            get_file(test_file_details, mock_s3_client)
+        expected_msg = """Unable to retrieve file -> NoSuchBucket : The specified bucket does not exist"""
         assert expected_msg in caplog.text
 
-    def test_get_file_raises_clienterror_error_when_file_does_not_exist(
-        self, mock_s3_client, mock_csv_file_in_bucket
+    def test_get_file_raises_ClientError_with_log_when_file_does_not_exist(
+        self, mock_s3_client,
+        mock_csv_file_details, 
+        caplog
     ):
-        valid_bucket = mock_csv_file_in_bucket["Bucket"]
+        valid_bucket = mock_csv_file_details["Bucket"]
 
         mock_file_details = {
             "Scheme": "s3",
@@ -442,29 +422,7 @@ class TestGetFile:
         }
         with pytest.raises(ClientError):
             get_file(mock_file_details, mock_s3_client)
-
-        # incorrect_key = "incorrect_filename.csv"
-        # with pytest.raises(ClientError) as exc:
-        #     get_file(mock_bucket, incorrect_key, mock_s3_client)
-        # err = exc.value.response["Error"]
-        # assert err["Code"] == "NoSuchKey"
-
-    def test_get_file_logs_error_if_file_does_not_exist(
-        self, mock_s3_client, mock_csv_file_in_bucket, caplog
-    ):
-        caplog.set_level(logging.ERROR)
-        valid_bucket = mock_csv_file_in_bucket["Bucket"]
-
-        mock_file_details = {
-            "Scheme": "s3",
-            "Bucket": valid_bucket,
-            "Key": "WRONG_file.csv",  # file does not exist in mock bucket
-            "File_Name": "WRONG_file.csv",
-            "File_Type": "csv",
-        }
-        with pytest.raises(ClientError):
-            get_file(mock_file_details, mock_s3_client)
-        expected_msg = "NoSuchKey : The specified key does not exist."
+        expected_msg = "Unable to retrieve file -> NoSuchKey : The specified key does not exist."
         assert expected_msg in caplog.text
 
     @pytest.mark.skip
@@ -478,66 +436,44 @@ class TestGetFile:
 
     # empty file will be handled in convert_to_df() so removed from here
 
-    def test_get_file_raises_error_if_retrieving_archived_file(
-        self, mock_s3_client, mock_csv_file_in_bucket
+    def test_get_file_raises_ClientError_with_log_if_retrieving_archived_file(
+        self, mock_s3_client,
+        mock_csv_file_details, 
+        caplog
     ):
         # arrange
         mock_s3_client.put_object(
             Bucket="test_bucket_TR_NC",
             Key="test_file.csv",
             Body=b"Some data",
-            StorageClass="GLACIER",
+            StorageClass="GLACIER", #  archive
         )
         with pytest.raises(ClientError):
-            get_file(mock_csv_file_in_bucket, mock_s3_client)
-        # TODO: check this is working as expected 
-
-    def test_get_file_logs_error_if_retrieving_archived_file(
-        self, mock_s3_client, mock_csv_file_in_bucket, caplog
-    ):
-        caplog.set_level(logging.ERROR)
-        mock_s3_client.put_object(
-            Bucket="test_bucket_TR_NC",
-            Key="test_file.csv",
-            Body=b"Some data",
-            StorageClass="GLACIER",
-        )
-        with pytest.raises(ClientError):
-            get_file(mock_csv_file_in_bucket, mock_s3_client)
-        expected_msg = ("InvalidObjectState : The operation is "
+            get_file(mock_csv_file_details, mock_s3_client)
+        expected_msg = ("Unable to retrieve file -> InvalidObjectState : The operation is "
         "not valid for the object's storage class")
         assert expected_msg in caplog.text
+    # TODO: check this is working as expected 
 
-    @pytest.mark.skip
-    def test_integration(
-        self,
-        mock_json_for_csv_file,
-        mock_dict_for_csv_file,
-        mock_csv_file_in_bucket,
-    ):
-        # validate_json -> extract_s3_details -> get_file
-        validate_input_json(mock_json_for_csv_file)
-        extract_s3_details(mock_dict_for_csv_file)
-        extract_fields_to_alter(mock_dict_for_csv_file)
-        get_file(mock_csv_file_in_bucket)
-        pass
+
+        
 
 
 class TestConvertFileToDF:
     def test_convert_to_df_returns_df(
             self,
-            mock_csv_file_in_bucket,
+            mock_csv_file_details,
             mock_s3_client
     ):
-        file_object = get_file(mock_csv_file_in_bucket, mock_s3_client)
-        result = convert_file_to_df(mock_csv_file_in_bucket, file_object)  #
+        file_object = get_file(mock_csv_file_details, mock_s3_client)
+        result = convert_file_to_df(mock_csv_file_details, file_object)  #
         assert isinstance(result, pd.DataFrame)
 
     def test_returns_content_from_the_named_csv_file(
-        self, mock_csv_file_in_bucket, mock_s3_client
+        self, mock_csv_file_details, mock_s3_client
     ):
-        file_object = get_file(mock_csv_file_in_bucket, mock_s3_client)
-        df = convert_file_to_df(mock_csv_file_in_bucket, file_object)
+        file_object = get_file(mock_csv_file_details, mock_s3_client)
+        df = convert_file_to_df(mock_csv_file_details, file_object)
 
         assert list(df.columns) == ["Name", "Email", "Phone", "DOB", "Notes"]
         # df.keys() also works
@@ -631,6 +567,7 @@ class TestConvertFileToDF:
 
     def test_raises_Error_if_file_type_inconsistent(self): 
         #eg. .json but content is csv 
+        pass
 
 
 @pytest.mark.skip
