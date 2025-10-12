@@ -30,11 +30,17 @@ def validate_input_json(input_json: str) -> dict:
     try:
         data = json.loads(input_json)
 
+    #if not valid json string: 
+    except TypeError as err: 
+        logging.warning (f'Invalid JSON: {err}')
+        raise
+    
+    #invalid json syntax 
     except json.JSONDecodeError as err: 
-        logging.warning(f"Invalid JSON string: {err}")
-        raise ValueError("Invalid JSON syntax") from err  #TODO: check 
+        logging.warning(f"Invalid JSON syntax: {err}")
+        raise ValueError(f"{err}")      #TODO: check 
 
-    except ValueError as err:  # TODO: check
+    except ValueError as err:  # TODO: check ValueError twice?? 
         logging.warning("Invalid JSON: {err}")
         raise 
 
@@ -48,10 +54,7 @@ def validate_input_json(input_json: str) -> dict:
     if len(data) < 2:
         logging.warning("insufficient number of keys present")
 
-    if not len(data["pii_fields"]): 
-        logging.warning("Fields to obfuscate not specified")
-
-    # # optional: (if fields are fixed)
+    # # optional: (if keys are fixed)
     # permitted_keys = ["file_to_obfuscate", "pii_fields"]
 
     # keys = list(data.keys())
@@ -138,18 +141,17 @@ def extract_fields_to_alter(verified_input: dict) -> list:
     """
     fields = verified_input["pii_fields"]
 
-    # should be handled in validate_json()
     if fields is None:
-        logging.error("no fields present")
-        raise ValueError("no fields present")
+        logging.error("fields to obfuscate : None")
+        raise ValueError("fields to obfuscate : None")
 
+    if len(fields) == 0:
+        logging.error("no fields to obfuscate provided")
+        raise ValueError("no fields to obfuscate provided")
+    
     if not isinstance(fields, list):
         logging.error("fields must be a list")
         raise TypeError("fields must be a list")
-
-    if len(fields) == 0:
-        logging.error("no fields detected")
-        raise ValueError("no fields detected")
 
     invalid_fields = []
     for heading in fields:
@@ -191,11 +193,12 @@ def get_file(file_details: dict, s3: object) -> bytes:
         logging.info("file retrieved")
         return data
 
+    #TODO: check 
     except ClientError as err:
         logging.error(
             f"Unable to retrieve file -> {err.response["Error"]["Code"]} : {err.response["Error"]["Message"]}"
         ) 
-        raise err
+        raise err 
 
     # TODO: get_file() add ParamValidationError handling? 
 
@@ -257,7 +260,8 @@ def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
         # the pd and put in the warning (cast them safely) eg. 0 or NaN
         else:
             df[heading] = "xxx"
-    logger.warning(f"Invalid headings identified: {invalid_headings}")
+    if invalid_headings:
+        logger.warning(f"Invalid headings identified: {invalid_headings}") 
     return df
 
 # Primary function
@@ -311,9 +315,19 @@ if __name__ == "__main__":
 
     # TODO: confirm security, PEP8 compliance.
     
+    """run on cli"""
+    # #correct version:
     obfuscator('{"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]}')
 
+    # #no fields to obfuscate:
+    # obfuscator('{"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": []}')
 
+    # #no file extension
+    # obfuscator('{"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset", "pii_fields": ["Name", "Sex", "Age"]}')
   
+    # #invalid json
+    # obfuscator('{"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": }')
 
-
+    #Incorrect URL
+    #obfuscator('{"file_to_obfuscate": "://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]}')
+    #obfuscator('{"file_to_obfuscate": "s3://nc-tr-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]}')

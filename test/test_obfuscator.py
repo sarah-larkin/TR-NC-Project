@@ -33,6 +33,13 @@ class TestValidateJSON:
         }
         assert "Valid JSON and valid fields" in caplog.text   
 
+    def test_TypeError_raised_if_invalid_json_string(self, caplog): 
+        caplog.set_level(logging.WARNING)
+        with pytest.raises(TypeError): 
+            #dict not json
+            validate_input_json({"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]})
+        assert "Invalid JSON: the JSON object must be str, bytes or bytearray, not dict" in caplog.text
+
     def test_JSONDecodeError_raised_when_json_invalid(self, caplog): #TODO: check!!
         caplog.set_level(logging.ERROR)
         with pytest.raises(ValueError):  # has to be with pytest.raises
@@ -64,12 +71,6 @@ class TestValidateJSON:
         input_json = '{"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
         validate_input_json(input_json)
         assert "insufficient number of keys present" in caplog.text
-
-    def test_error_logged_if_no_fields_to_obfuscate_are_specified(self, caplog): 
-        caplog.set_level(logging.WARNING)
-        mock_csv_json = '{"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv", "pii_fields": []}'
-        validate_input_json(mock_csv_json)
-        assert "Fields to obfuscate not specified" in caplog.text
 
     # TODO: hardcoding ok?
     def test_json_str_contains_specific_keys(self, mock_json_for_csv_file):
@@ -186,6 +187,7 @@ class TestExtractS3Details:
             )
         assert "unable to process pdf files" in caplog.text
 
+
 class TestExtractFieldsToAlter:
     def test_correct_input_logs_success_msg(
             self,
@@ -206,7 +208,19 @@ class TestExtractFieldsToAlter:
                     "pii_fields": None,
                 }
             )
-        assert "no fields present" in caplog.text
+        assert "fields to obfuscate : None" in caplog.text
+
+    def test_logs_and_raises_error_if_fields_list_empty(self, caplog):
+        caplog.set_level(logging.ERROR)
+        file_path = "s3://test_bucket_TR_NC/test_file.csv"
+        with pytest.raises(ValueError):
+            extract_fields_to_alter(
+                {
+                    "file_to_obfuscate": file_path,
+                    "pii_fields": [],
+                }
+            )
+        assert "no fields to obfuscate provided" in caplog.text
 
     def test_error_raised_and_logged_if_fields_is_not_list(self, caplog):
         caplog.set_level(logging.ERROR)
@@ -220,17 +234,7 @@ class TestExtractFieldsToAlter:
             )
         assert "fields must be a list" in caplog.text
 
-    def test_logs_and_raises_error_if_fields_list_empty(self, caplog):
-        caplog.set_level(logging.ERROR)
-        file_path = "s3://test_bucket_TR_NC/test_file.csv"
-        with pytest.raises(ValueError):
-            extract_fields_to_alter(
-                {
-                    "file_to_obfuscate": file_path,
-                    "pii_fields": [],
-                }
-            )
-        assert "no fields detected" in caplog.text
+    
 
     def test_raises_and_logs_error_if_invalid_fields(self, caplog):
         caplog.set_level(logging.ERROR)
