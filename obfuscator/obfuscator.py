@@ -43,10 +43,13 @@ def validate_input_json(input_json: str) -> dict:
         raise ValueError
 
     if len(data) > 2:
-        logging.warning("additional fields present")
+        logging.warning("additional key(s) present")
 
     if len(data) < 2:
-        logging.warning("insufficient number of fields present")
+        logging.warning("insufficient number of keys present")
+
+    if not len(data["pii_fields"]): 
+        logging.warning("Fields to obfuscate not specified")
 
     # # optional: (if fields are fixed)
     # permitted_keys = ["file_to_obfuscate", "pii_fields"]
@@ -133,9 +136,7 @@ def extract_fields_to_alter(verified_input: dict) -> list:
     Returns:
         list: list of the
     """
-    fields = verified_input[
-        "pii_fields"
-    ]  # TODO: check that this being hard coded is acceptable
+    fields = verified_input["pii_fields"]
 
     # should be handled in validate_json()
     if fields is None:
@@ -233,6 +234,7 @@ def convert_file_to_df(
 
 def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
     # TODO: confirm if returning bytes or df
+    #if bytest pass in dict got get file type? then to_csv().encode()??? 
     """obfuscating the values under the headings defined in fields list.
 
     args:
@@ -250,7 +252,7 @@ def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
         valid_columns = list(df.columns)
         if heading not in valid_columns:
             invalid_headings.append(heading)
-        # if datatype in specific row/column is not str log a warning
+        # if datatype in specific row/column is not str log a warning (giving primary key/location?)
         # TODO: check how to specify specific fields within
         # the pd and put in the warning (cast them safely) eg. 0 or NaN
         else:
@@ -286,7 +288,8 @@ def obfuscator(input_json: json) -> bytes:
     data = get_file(file_details, s3)
     data_df = convert_file_to_df(file_details, data)  # TODO: this where file type is handled?
     obf_df = obfuscate_data(data_df, fields)
-    pass
+    print(obf_df)
+    return obf_df
 
 
 
@@ -307,6 +310,10 @@ if __name__ == "__main__":
     # "s3://tr-nc-test-source-files/Titanic-Dataset.csv"
 
     # TODO: confirm security, PEP8 compliance.
-    pass
+    
+    obfuscator('{"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]}')
+
+
+  
 
 
