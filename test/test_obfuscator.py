@@ -23,11 +23,11 @@ from unittest.mock import patch
 class TestValidateJSON:
     def test_validate_json_returns_dict_if_json_valid(
             self,
-            mock_json_for_csv_file,
+            mock_input_json_for_csv_file,
             caplog
         ):
         caplog.set_level(logging.INFO)
-        result = validate_input_json(mock_json_for_csv_file)
+        result = validate_input_json(mock_input_json_for_csv_file)
         assert result == {
             "file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv",
             "pii_fields": ["Name", "Email", "Phone", "DOB"],
@@ -54,8 +54,8 @@ class TestValidateJSON:
 
     # TODO: add in test raises valueerror if valid JSON but not a dict 
 
-    def test_2_key_value_pairs_are_passed(self, mock_json_for_csv_file):
-        result = validate_input_json(mock_json_for_csv_file)
+    def test_2_key_value_pairs_are_passed(self, mock_input_json_for_csv_file):
+        result = validate_input_json(mock_input_json_for_csv_file)
         assert len(result) == 2
 
     def test_warning_logged_if_dict_contains_additional_keys(self, caplog):
@@ -74,9 +74,9 @@ class TestValidateJSON:
         assert "insufficient number of keys present" in caplog.text
 
     # TODO: hardcoding ok?
-    def test_json_str_contains_specific_keys(self, mock_json_for_csv_file):
+    def test_json_str_contains_specific_keys(self, mock_input_json_for_csv_file):
         """checks specific key names"""
-        result = validate_input_json(mock_json_for_csv_file)
+        result = validate_input_json(mock_input_json_for_csv_file)
         key_names = result.keys()
         assert list(key_names) == ["file_to_obfuscate", "pii_fields"]
    
@@ -323,7 +323,7 @@ class TestGetFile:
     # TODO: check error handling for access issues? is this necessary for library module? (would need patch in testing)
 
 
-class TestConvertFileToDF:
+class TestConvertFileToDFFromCSV:
     def test_convert_to_df_returns_df(
             self,
             mock_csv_file_details,
@@ -362,37 +362,6 @@ class TestConvertFileToDF:
             "01/05/1975",
             "no action",
         ]
-
-
-    def test_returns_content_from_the_named_json_file(
-        self, mock_json_file_details, mock_s3_client
-    ):
-        file_object = get_file(mock_json_file_details, mock_s3_client)
-        df = convert_file_to_df(mock_json_file_details, file_object)
-
-        assert list(df.columns) == ["Name", "Email", "Phone", "DOB", "Notes"]
-        assert list(df.loc[0]) == [
-            "Alice",
-            "alice@example.com",
-            "+1-555-111-2222",
-            "1990-01-01",
-            "ok",
-        ]
-        assert list(df.loc[1]) == [
-            "Bob",
-            "bob_at_example.com",
-            "5551113333",
-            "1985-02-03",
-            None,  #TODO: check why None not np.nan
-        ]
-        assert list(df.loc[2]) == [
-            "Charlie",
-            "charlie@ex.co.uk",
-            "0",
-            "01/05/1975",
-            "no action",
-        ]
-
 
     def test_raises_and_logs_error_if_csv_file_is_empty(
             self,
@@ -437,7 +406,35 @@ class TestConvertFileToDF:
         #eg. .json but content is csv 
         pass
 
+class TestConvertFileToDFFromJSON:
+     def test_returns_content_from_the_named_json_file(
+        self, mock_json_file_details, mock_s3_client
+    ):
+        file_object = get_file(mock_json_file_details, mock_s3_client)
+        df = convert_file_to_df(mock_json_file_details, file_object)
 
+        assert list(df.columns) == ["Name", "Email", "Phone", "DOB", "Notes"]
+        assert list(df.loc[0]) == [
+            "Alice",
+            "alice@example.com",
+            "+1-555-111-2222",
+            "1990-01-01",
+            "ok",
+        ]
+        assert list(df.loc[1]) == [
+            "Bob",
+            "bob_at_example.com",
+            "5551113333",
+            "1985-02-03",
+            None,  #TODO: check why None not np.nan
+        ]
+        assert list(df.loc[2]) == [
+            "Charlie",
+            "charlie@ex.co.uk",
+            "0",
+            "01/05/1975",
+            "no action",
+        ]
 
 class TestObfuscateData:
     """fields: ["Name", "Email", "Phone", "DOB", "Notes"]"""
@@ -521,13 +518,14 @@ class TestObfuscateData:
         # "large text " * 2]
 
 
-@pytest.mark.skip
+
 class TestObfuscator:
     # check bucket name is valid and exists
     # check file name is valid and exists
 
-    def test_csv_file_returns_bytestream(self, mock_json_for_csv_file):
-        assert type(obfuscator(mock_json_for_csv_file)) == bytes
+    def test_csv_file_returns_bytestream(self, mock_input_json_for_csv_file):
+        result = obfuscator(mock_input_json_for_csv_file)
+        assert isinstance(result, bytes)
 
     def test_integration(self): 
         pass 

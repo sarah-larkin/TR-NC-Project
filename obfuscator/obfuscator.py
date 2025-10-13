@@ -19,7 +19,7 @@ s3 = boto3.client("s3")
 
 # Helper functions
 def validate_input_json(input_json: str) -> dict:
-    """validate JSON string and return parsed dict if valid.
+    """validate JSON string and return dict if valid.
 
     Args:
         input_json: json string passed into initial function
@@ -41,11 +41,11 @@ def validate_input_json(input_json: str) -> dict:
         raise ValueError(f"{err}")      #TODO: check 
 
     except ValueError as err:  # TODO: check ValueError twice?? 
-        logging.warning("Invalid JSON: {err}")
+        logging.warning("Invalid input: {err}")
         raise 
 
     if not isinstance(data, dict):
-        logging.warning("JSON should be a dictionary")
+        logging.warning("dictionary format required")
         raise ValueError
 
     if len(data) > 2:
@@ -137,10 +137,11 @@ def extract_fields_to_alter(verified_input: dict) -> list:
         TypeError: if list contains elements that are not strings
 
     Returns:
-        list: list of the
+        list: list of fields to be obfuscated
     """
     fields = verified_input["pii_fields"]
 
+    #fields None removed as handled in validate_json 
     if fields is None:
         logging.error("fields to obfuscate : None")
         raise ValueError("fields to obfuscate : None")
@@ -225,18 +226,18 @@ def convert_file_to_df(file_details: dict, data: bytes) -> (pd.DataFrame):
         # extension:
         if file_type == 'json':
             df = pd.read_json(io.BytesIO(data))
-        if file_type == 'parquet': 
-            df = pd.read_parquet(io.BytesIO(data))
+        # if file_type == 'parquet': 
+        #     df = pd.read_parquet(io.BytesIO(data))  #TODO: check if extending? 
 
     except pd.errors.EmptyDataError as error:
         logging.error(
             f"the file: {file_name} from: {bucket} is empty")
         raise error
-
+    #TODO: handle ParserError? 
     return df
     # TODO: check exception raising - filetype 
 
-def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
+def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame: #TODO: to fileobject/bytes? 
     # TODO: confirm if returning bytes or df
     #if bytest pass in dict got get file type? then to_csv().encode()??? 
     """obfuscating the values under the headings defined in fields list.
@@ -249,21 +250,33 @@ def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
     new DataFrame, exact copy of original but with relevant columns obfuscated.
     """
     df = data_df.copy()
-
+ 
     invalid_headings = []
 
     for heading in fields:
         valid_columns = list(df.columns)
         if heading not in valid_columns:
             invalid_headings.append(heading)
-        # if datatype in specific row/column is not str log a warning (giving primary key/location?)
-        # TODO: check how to specify specific fields within
-        # the pd and put in the warning (cast them safely) eg. 0 or NaN
+        # TODO: if datatype in specific row/column is not str log a warning (giving primary key/location?) eg. 0 or NaN
         else:
             df[heading] = "xxx"
+
     if invalid_headings:
         logger.warning(f"Invalid headings identified: {invalid_headings}") 
+   
     return df
+
+def convert_obfuscated_df_to_file(obs_df : pd.DataFrame, file_details: dict) -> "file / bytestream object":  # TODO: check what is valid here 
+
+    file_type = file_details["File_Type"]
+
+    if file_type == "csv": 
+        output_file = obs_df.to_csv(index=False)
+    if file_type == "json": 
+        output_file = obs_df.to_json(index=False)
+
+    return output_file
+
 
 # Primary function
 def obfuscator(input_json: json) -> bytes:
@@ -293,8 +306,9 @@ def obfuscator(input_json: json) -> bytes:
     data = get_file(file_details, s3)
     data_df = convert_file_to_df(file_details, data)  # TODO: this where file type is handled?
     obf_df = obfuscate_data(data_df, fields)
-    print(obf_df)
-    return obf_df
+    file_output = convert_obfuscated_df_to_file(obf_df, file_details)
+    print(file_output)
+    return file_output
 
 
 
