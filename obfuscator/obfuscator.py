@@ -193,14 +193,13 @@ def get_file(file_details: dict, s3: object) -> bytes:
         logging.info("file retrieved")
         return data
 
-    #TODO: check 
     except ClientError as err:
-        logging.error(
-            f"Unable to retrieve file -> {err.response["Error"]["Code"]} : {err.response["Error"]["Message"]}"
-        ) 
-        raise err 
+        error_code = err.response["Error"]["Code"]
+        error_msg = err.response["Error"]["Message"]
 
-    # TODO: get_file() add ParamValidationError handling? 
+        logging.error(f"for s3://{bucket}/{key} -> {error_code} : {error_msg}")
+        raise err
+     
 
 def convert_file_to_df(
     file_details: dict, data: bytes

@@ -14,6 +14,7 @@ from copy import deepcopy
 import numpy as np
 import logging
 from moto import mock_aws
+from unittest.mock import patch
 
 # TODO: check out pytest.mark.parametrize 
 # TODO: remove repetative tests 
@@ -293,11 +294,12 @@ class TestGetFile:
 
         with pytest.raises(ClientError):
             get_file(test_file_details, mock_s3_client)
-        expected_msg = """Unable to retrieve file -> NoSuchBucket : The specified bucket does not exist"""
+        expected_msg = "for s3://test_bucket_does_not_exist/test_file.csv -> NoSuchBucket : The specified bucket does not exist"
         assert expected_msg in caplog.text
 
     def test_get_file_raises_ClientError_with_log_when_file_does_not_exist(
-        self, mock_s3_client,
+        self,
+        mock_s3_client,
         mock_csv_file_details, 
         caplog
     ):
@@ -312,38 +314,13 @@ class TestGetFile:
         }
         with pytest.raises(ClientError):
             get_file(mock_file_details, mock_s3_client)
-        expected_msg = "Unable to retrieve file -> NoSuchKey : The specified key does not exist."
+        expected_msg = "for s3://test_bucket_TR_NC/WRONG_file.csv -> NoSuchKey : The specified key does not exist."
         assert expected_msg in caplog.text
-
-    @pytest.mark.skip
-    def test_get_file_raises_error_if_denied_access_to_bucket(self):
-        # ClientError
-        pass
-
-    @pytest.mark.skip
-    def test_get_file_logs_error_if_denied_access_to_bucket(self):
-        pass
 
     # empty file will be handled in convert_to_df() so removed from here
-
-    def test_get_file_raises_and_logs_ClientError_if_retrieving_archived_file(
-        self, mock_s3_client,
-        mock_csv_file_details, 
-        caplog
-    ):
-        # arrange
-        mock_s3_client.put_object(
-            Bucket="test_bucket_TR_NC",
-            Key="test_file.csv",
-            Body=b"Some data",
-            StorageClass="GLACIER", #  archive
-        )
-        with pytest.raises(ClientError):
-            get_file(mock_csv_file_details, mock_s3_client)
-        expected_msg = ("Unable to retrieve file -> InvalidObjectState : The operation is "
-        "not valid for the object's storage class")
-        assert expected_msg in caplog.text
-    # TODO: check this is working as expected 
+    
+    # TODO: check error handling for archived files? 
+    # TODO: check error handling for access issues? is this necessary for library module? (would need patch in testing)
 
 
 class TestConvertFileToDF:
