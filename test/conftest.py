@@ -33,10 +33,9 @@ def mock_bucket(mock_s3_client):
 
 
 @pytest.fixture(scope='function')
-def mock_csv_file_details(mock_s3_client, mock_bucket): # TODO: could add mock bucket? 
+def mock_csv_file_details(mock_s3_client, mock_bucket): 
     """mocked csv file in s3 bucket, returns dict 
     (additional edge cases added to mock_df below)"""
-    #file_name =    #'test_file.csv'
     mock_s3_client.put_object(
         Bucket=mock_bucket,  #consider upload_fileobj for replicating larger file size
         Key="test_file.csv",
@@ -49,7 +48,33 @@ def mock_csv_file_details(mock_s3_client, mock_bucket): # TODO: could add mock b
                 "File_Type": "csv"}
     return mock_details
  
-#TODO: mock_csv_file_detaile(): check if need to include more edge cases here in the body added to the csv (like in mock_df)
+#TODO: mock_csv_file_details(): check if need to include more edge cases here in the body added to the csv (like in mock_df)
+
+@pytest.fixture(scope='function')
+def mock_json_file_details(mock_s3_client, mock_bucket):  
+    """mocked json file in s3 bucket, returns dict"""
+    mock_s3_client.put_object(
+        Bucket=mock_bucket,  
+        Key="test_file.json",
+        Body= 
+            b'{'
+            b'"Name": ["Alice", "Bob", "Charlie"],'
+            b'"Email": ["alice@example.com", "bob_at_example.com", "charlie@ex.co.uk"],'
+            b'"Phone": ["+1-555-111-2222", "5551113333", "0"],'
+            b'"DOB": ["1990-01-01", "1985-02-03", "01/05/1975"],'
+            b'"Notes": ["ok", null, "no action"]'
+            b'}'
+        )
+
+    mock_details = {"Scheme" : "s3",
+                "Bucket" : "test_bucket_TR_NC",
+                "Key": "test_file.json",  #could include 'folder' path 
+                "File_Name": "test_file.json",
+                "File_Type": "json"}
+    
+    return mock_details
+
+# TODO: extension parquet?
 
 @pytest.fixture(scope='function')
 def mock_df(): 

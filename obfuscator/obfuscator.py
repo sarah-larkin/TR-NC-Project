@@ -201,15 +201,11 @@ def get_file(file_details: dict, s3: object) -> bytes:
         raise err
      
 
-def convert_file_to_df(
-    file_details: dict, data: bytes
-) -> (
-    pd.DataFrame
-):  
-    """_takes raw bytes from get_file() and converts to pd.Dataframe
+def convert_file_to_df(file_details: dict, data: bytes) -> (pd.DataFrame):  
+    """takes raw bytes from get_file() and converts to pd.Dataframe
 
     Args:
-        file_details (dict): dictionary returned from extract_s3_details()
+        file_details (dict): dictionary containing file details (bucket name, file name/type) returned from extract_s3_details()
         file_object (bytes): bytes returned from get_file()
 
     Raises:
@@ -218,17 +214,23 @@ def convert_file_to_df(
     Returns:
         pd.DataFrame: return pandas DataFrame
     """
+    
+    file_type = file_details["File_Type"] 
+    file_name = file_details["File_Name"]
+    bucket = file_details["Bucket"]
+
     try:
-        if file_details["File_Type"] == "csv":
-            df = pd.read_csv(
-                io.BytesIO(data)
-            )  # TODO: read up on io.BytesIO - pandas cannot read raw bytes
+        if file_type == "csv":
+            df = pd.read_csv(io.BytesIO(data))  # TODO: read up on io.BytesIO - pandas cannot read raw bytes
         # extension:
-        # if file_type == 'json':
-        #     df = pd.read_json(io.BytesIO(data))
+        if file_type == 'json':
+            df = pd.read_json(io.BytesIO(data))
+        if file_type == 'parquet': 
+            df = pd.read_parquet(io.BytesIO(data))
+
     except pd.errors.EmptyDataError as error:
         logging.error(
-            "the file you are trying to retrieve does not contain any data")
+            f"the file: {file_name} from: {bucket} is empty")
         raise error
 
     return df
