@@ -72,7 +72,6 @@ class TestValidateJSON:
         validate_input_json(input_json)
         assert "insufficient number of keys present" in caplog.text
 
-    # TODO: hardcoding ok?
     def test_json_str_contains_specific_keys(self, mock_input_json_for_csv_file):
         """checks specific key names"""
         result = validate_input_json(mock_input_json_for_csv_file)
@@ -82,12 +81,10 @@ class TestValidateJSON:
     @pytest.mark.skip
     def test_error_raised_if_different_keys_do_not_match(self, caplog):
         caplog.set_level(logging.WARNING)
-        # with pytest.raises(ValueError):
         validate_input_json(
             '{"file": "s3://test_bucket_TR_NC/test_file.csv",'
             '"fields": ["Name", "Email", "Phone", "DOB"]}'
         )
-
         expected_msg = "Fields that are not permitted: ['file','fields']"
         assert expected_msg in caplog.text
 
@@ -403,7 +400,7 @@ class TestConvertFileToDFFromCSV:
         #eg. .json but content is csv 
         pass
 
-
+@pytest.mark.skip
 class TestConvertFileToDFFromJSON:
      def test_returns_content_from_the_named_json_file(
         self, mock_json_file_details, mock_s3_client
@@ -511,12 +508,12 @@ class TestObfuscateData:
 
 class TestCovertObfuscatedDFToCsvBytes: 
     def test_returns_bytes_for_csv(self, mock_obfuscated_df, mock_csv_file_details): 
-        result = convert_obf_df_to_file(mock_obfuscated_df, mock_csv_file_details)
+        result = convert_obf_df_to_bytestream(mock_obfuscated_df, mock_csv_file_details)
         assert isinstance(result, bytes)  
 
     def test_success_msg_logged_when_csv_bytestream_returned(self, mock_obfuscated_df, mock_csv_file_details, caplog): 
         caplog.set_level(logging.INFO)
-        convert_obf_df_to_file(mock_obfuscated_df, mock_csv_file_details)
+        convert_obf_df_to_bytestream(mock_obfuscated_df, mock_csv_file_details)
         assert "obfuscated file ready" in caplog.text
     
     @pytest.mark.skip
@@ -541,18 +538,35 @@ class TestCovertObfuscatedDFToJSONFile:
 
 class TestObfuscator:   
 
-    def test_integration_csv(self, mock_input_json_for_csv_file, mock_verified_input_for_csv, mock_csv_file_details, mock_s3_client, mock_csv_as_bytes, mock_df, mock_obfuscated_df): 
-        # TODO: chain outputs together 
-        validate_input_json(mock_input_json_for_csv_file)
-        extract_s3_details(mock_verified_input_for_csv)
-        extract_fields_to_alter(mock_verified_input_for_csv)
-        get_file(mock_csv_file_details, mock_s3_client)
-        convert_file_to_df(mock_csv_file_details, mock_csv_as_bytes)  
-        obfuscate_data(mock_df, ["Name", "Email", "Phone", "DOB", "Notes"])
-        result = convert_obf_df_to_file(mock_obfuscated_df, mock_csv_file_details)
+    def test_integration_csv_happy_path(self, mock_input_json_for_csv_file, mock_s3_client, caplog): 
+        
+        caplog.set_level(logging.INFO)
 
-        assert isinstance(result, object)
-        assert result == 'Name,Email,Phone,DOB,Notes\nxxx,xxx,xxx,xxx,ok\nxxx,xxx,xxx,xxx,\nxxx,xxx,xxx,xxx,legacy\nxxx,xxx,xxx,xxx,\nxxx,xxx,xxx,xxx,no action\nxxx,xxx,xxx,xxx,special chars: \u2665\nxxx,xxx,xxx,xxx,large text large text \nxxx,xxx,xxx,xxx,final row\n'
+        verified_input = validate_input_json(mock_input_json_for_csv_file)
+        file_details = extract_s3_details(verified_input)
+        fields_to_alter = extract_fields_to_alter(verified_input)
+        data =get_file(file_details, mock_s3_client)
+        df = convert_file_to_df(file_details, data)  
+        obf_df = obfuscate_data(df, fields_to_alter)
+        result = convert_obf_df_to_bytestream(obf_df, file_details)
+
+        assert isinstance(result, bytes)
+        assert result == b'Name,Email,Phone,DOB,Notes\nxxx,xxx,xxx,xxx,ok\nxxx,xxx,xxx,xxx,\nxxx,xxx,xxx,xxx,no action\n'
+        assert "obfuscated file ready" in caplog.text
+
+    def test_integration_csv_with_error(self, mock_s3_client, caplog): 
+        caplog.set_level(logging.WARNING)
+        verified_input = validate_input_json('{"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv",'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"]') #no closing bracket
+        file_details = extract_s3_details(verified_input)
+        fields_to_alter = extract_fields_to_alter(verified_input)
+        data =get_file(file_details, mock_s3_client)
+        df = convert_file_to_df(file_details, data)  
+        obf_df = obfuscate_data(df, fields_to_alter)
+        with pytest.raises(TypeError, ValueError):
+            convert_obf_df_to_bytestream(obf_df, file_details)
+
+        assert "Invalid JSON" in caplog.text
 
 @pytest.mark.skip
 class General:

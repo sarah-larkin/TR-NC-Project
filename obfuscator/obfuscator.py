@@ -3,9 +3,9 @@ import logging
 import pandas as pd
 from urllib.parse import urlparse
 import io
-
 import boto3
 from botocore.exceptions import ClientError
+import time
 
 # TODO: standardise exceptions and logging. raise in helper funcs and log in final func?
 # TODO: use single quotes in f strings 
@@ -169,7 +169,7 @@ def extract_fields_to_alter(verified_input: dict) -> list:
     return fields
 
 def get_file(file_details: dict, s3: object) -> bytes:
-    """takes dict from extract_s3_details() and retrieves named file from named s3 bucket
+    """Retrieves the named file from the named s3 bucket listed in dict from extract_s3_details()
 
     Args:
         file_details (dict): output dict from extract_s3_details()
@@ -187,10 +187,11 @@ def get_file(file_details: dict, s3: object) -> bytes:
     key = file_details["Key"]
 
     try:
-        file_object = s3.get_object(Bucket=bucket, Key=key)  # returns dict
-        data = file_object["Body"].read()  # .read() to return bytes
+        file_object = s3.get_object(Bucket=bucket, Key=key)  # returns dict -> ["Body"]=streaming object
+        data_body = file_object["Body"]  # can only be read once 
+        data_bytes = data_body.read()    # .read() to return bytes which are reusable
         logging.info("file retrieved")
-        return data
+        return data_bytes
 
     except ClientError as err:
         error_code = err.response["Error"]["Code"]
@@ -219,10 +220,12 @@ def convert_file_to_df(file_details: dict, data: bytes) -> (pd.DataFrame):
 
     try:
         if file_type == "csv":
-            df = pd.read_csv(io.BytesIO(data))  # TODO: read up on io.BytesIO - pandas cannot read raw bytes
-        # extension:
-        if file_type == 'json':
-            df = pd.read_json(io.BytesIO(data))
+            data_stream = io.BytesIO(data) # convert bytes to in memory file-like object stream
+            df = pd.read_csv(data_stream)  # pandas expects file-like object, can read from stream (not bytes)
+        """extension:"""
+        # if file_type == 'json':
+        #     data_object = io.BytesIO(data)
+        #     df = pd.read_json(data_object)
         # if file_type == 'parquet': 
         #     df = pd.read_parquet(io.BytesIO(data))  #TODO: check if extending? 
 
@@ -230,9 +233,9 @@ def convert_file_to_df(file_details: dict, data: bytes) -> (pd.DataFrame):
         logging.error(
             f"the file: {file_name} from: {bucket} is empty")
         raise error
-    #TODO: handle ParserError? 
+    #TODO: handle ParserError? other exceptions? 
     return df
-    # TODO: check exception raising - filetype 
+    
 
 def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
     """obfuscating the values under the headings defined in fields list. 
@@ -278,8 +281,11 @@ def convert_obf_df_to_bytestream(obs_df : pd.DataFrame, file_details: dict) -> b
     #file_name = file_details[ "File_Name"] #for local testing only 
 
     if file_type == "csv": 
-        output_bytestream = obs_df.to_csv(index=False)  #TODO: io.BytesIO() 
+        buffer = io.BytesIO()  # write to buffer in memory location rather than local file 
+        output_csv = obs_df.to_csv(buffer, index=False) 
+        output_bytestream = buffer.getvalue() 
         #output_file = obs_df.to_csv(f'obf_{file_name}.csv', index=False)  #for local testing only 
+    
     """extension"""
     # if file_type == "json": 
     #     output_bytestream = obs_df.to_json(index=False) # TODO: check stringIO
@@ -314,9 +320,9 @@ def obfuscator(input_json: json) -> bytes: # TODO: output object ??
     file_details = extract_s3_details(verified_input)
     fields = extract_fields_to_alter(verified_input)
     data = get_file(file_details, s3)
-    data_df = convert_file_to_df(file_details, data)  # TODO: this where file type is handled?
+    data_df = convert_file_to_df(file_details, data) 
     obf_df = obfuscate_data(data_df, fields)
-    file_output = convert_obf_df_to_file(obf_df, file_details)
+    file_output = convert_obf_df_to_bytestream(obf_df, file_details)
     #print(file_output)
     return file_output
 
