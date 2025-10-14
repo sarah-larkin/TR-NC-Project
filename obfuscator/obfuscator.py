@@ -141,7 +141,7 @@ def extract_fields_to_alter(verified_input: dict) -> list:
     """
     fields = verified_input["pii_fields"]
 
-    #fields None removed as handled in validate_json 
+    #remove as handled in validate_json?
     if fields is None:
         logging.error("fields to obfuscate : None")
         raise ValueError("fields to obfuscate : None")
@@ -167,8 +167,6 @@ def extract_fields_to_alter(verified_input: dict) -> list:
 
     logging.info("pii fields extracted")
     return fields
-
-    # fields valid (headings) vs df -> cannot be handled here?
 
 def get_file(file_details: dict, s3: object) -> bytes:
     """takes dict from extract_s3_details() and retrieves named file from named s3 bucket
@@ -201,7 +199,6 @@ def get_file(file_details: dict, s3: object) -> bytes:
         logging.error(f"for s3://{bucket}/{key} -> {error_code} : {error_msg}")
         raise err
      
-
 def convert_file_to_df(file_details: dict, data: bytes) -> (pd.DataFrame):  
     """takes raw bytes from get_file() and converts to pd.Dataframe
 
@@ -237,14 +234,12 @@ def convert_file_to_df(file_details: dict, data: bytes) -> (pd.DataFrame):
     return df
     # TODO: check exception raising - filetype 
 
-def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame: #TODO: to fileobject/bytes? 
-    # TODO: confirm if returning bytes or df
-    #if bytest pass in dict got get file type? then to_csv().encode()??? 
-    """obfuscating the values under the headings defined in fields list.
+def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
+    """obfuscating the values under the headings defined in fields list. 
 
     args:
     data_df - pd.DataFrame returned from convert_file_to_df()
-    fields - list returned from extract_fields_to_alter()
+    fields  - list returned from extract_fields_to_alter()
 
     returns:
     new DataFrame, exact copy of original but with relevant columns obfuscated.
@@ -257,33 +252,44 @@ def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame: #TODO: 
         valid_columns = list(df.columns)
         if heading not in valid_columns:
             invalid_headings.append(heading)
-        # TODO: if datatype in specific row/column is not str log a warning (giving primary key/location?) eg. 0 or NaN
         else:
             df[heading] = "xxx"
 
     if invalid_headings:
-        logger.warning(f"Invalid headings identified: {invalid_headings}") 
+        logger.warning(f"Heading you are trying to obfuscate does not exist: {invalid_headings}") 
+    
+    """Additional warning possible"""
+    # missing_row = df.index[df.isna().any(axis=1)] #  1 = column
+    # logger.warning(f"Data missing in the following index locations: {missing_row}")
    
     return df
 
-def convert_obf_df_to_file(obs_df : pd.DataFrame, file_details: dict) -> object:  # TODO: check what is valid here 
+def convert_obf_df_to_bytestream(obs_df : pd.DataFrame, file_details: dict) -> bytes:
+    """convert obfuscated bystream back to bystream compatible with s3 put_object 
 
+    args: 
+        obs_df (pd.DataFrame) : returned from obfuscate_data() 
+        file_details (dict) : output dict from extract_s3_details()
+
+    returns: 
+        bytestream containing file content 
+    """  
     file_type = file_details["File_Type"]
     #file_name = file_details[ "File_Name"] #for local testing only 
 
     if file_type == "csv": 
-        output_file = obs_df.to_csv(index=False)
+        output_bytestream = obs_df.to_csv(index=False)  #TODO: io.BytesIO() 
         #output_file = obs_df.to_csv(f'obf_{file_name}.csv', index=False)  #for local testing only 
     """extension"""
-    if file_type == "json": 
-        output_file = obs_df.to_json(index=False)
+    # if file_type == "json": 
+    #     output_bytestream = obs_df.to_json(index=False) # TODO: check stringIO
 
     logging.info("obfuscated file ready")
-    return output_file
+    return output_bytestream
 
 
 # Primary function
-def obfuscator(input_json: json) -> bytes:
+def obfuscator(input_json: json) -> bytes: # TODO: output object ??
     """
     function summary:
     produce a copy of the csv file specified in the input_json
@@ -311,7 +317,7 @@ def obfuscator(input_json: json) -> bytes:
     data_df = convert_file_to_df(file_details, data)  # TODO: this where file type is handled?
     obf_df = obfuscate_data(data_df, fields)
     file_output = convert_obf_df_to_file(obf_df, file_details)
-    print(file_output)
+    #print(file_output)
     return file_output
 
 

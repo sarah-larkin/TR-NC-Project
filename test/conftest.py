@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 
 
+#general fixutres 
 @pytest.fixture(scope='function', autouse=True)
 def aws_credentials():
     """mocked aws credentials for moto"""
@@ -32,6 +33,19 @@ def mock_bucket(mock_s3_client):
     return name
 
 
+#csv fixutres 
+@pytest.fixture(scope='function') 
+def mock_input_json_for_csv_file(mock_csv_file_details): 
+    """mocked input json string for a csv file"""
+    mock_csv_json = '{"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv", "pii_fields": ["Name", "Email", "Phone", "DOB"]}'
+    return mock_csv_json
+
+@pytest.fixture(scope='function') 
+def mock_verified_input_for_csv():
+    """mocked python dict for a csv file"""
+    mock_dict_for_csv = {"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv", "pii_fields": ["Name", "Email", "Phone", "DOB"]}
+    return mock_dict_for_csv
+
 @pytest.fixture(scope='function')
 def mock_csv_file_details(mock_s3_client, mock_bucket): 
     """mocked csv file in s3 bucket, returns dict 
@@ -48,8 +62,13 @@ def mock_csv_file_details(mock_s3_client, mock_bucket):
                 "File_Type": "csv"}
     return mock_details
  
-#TODO: mock_csv_file_details(): check if need to include more edge cases here in the body added to the csv (like in mock_df)
+@pytest.fixture(scope='function')
+def mock_csv_as_bytes(): 
+    data = b'Name,Email,Phone,DOB,Notes\nAlice,alice@example.com,+1-555-111-2222,1990-01-01,ok\nBob,bob_at_example.com,5551113333,1985-02-03\nCharlie,charlie@ex.co.uk,0,01/05/1975,no action'
+    return data 
 
+
+#mock JSON fixtures 
 @pytest.fixture(scope='function')
 def mock_json_file_details(mock_s3_client, mock_bucket):  
     """mocked json file in s3 bucket, returns dict"""
@@ -74,8 +93,10 @@ def mock_json_file_details(mock_s3_client, mock_bucket):
     
     return mock_details
 
-# TODO: extension parquet?
 
+#extension parquet fixtures?
+
+#df fixtures
 @pytest.fixture(scope='function')
 def mock_df(): 
     """mocked DataFrame"""
@@ -196,17 +217,10 @@ def mock_obfuscated_df():
 }
     return pd.DataFrame(d)
  
-@pytest.fixture(scope='function') 
-def mock_input_json_for_csv_file(mock_csv_file_details): 
-    """mocked input json string for a csv file"""
-    mock_csv_json = '{"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv", "pii_fields": ["Name", "Email", "Phone", "DOB"]}'
-    return mock_csv_json
 
-@pytest.fixture(scope='function') 
-def mock_dict_for_csv_file():  # TODO: update name and tests
-    """mocked python dict for a csv file"""
-    mock_dict_for_csv = {"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv", "pii_fields": ["Name", "Email", "Phone", "DOB"]}
-    return mock_dict_for_csv
+
+
+
 
 
 

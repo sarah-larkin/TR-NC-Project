@@ -5,7 +5,7 @@ from obfuscator.obfuscator import (
     get_file,
     convert_file_to_df,
     obfuscate_data,
-    convert_obf_df_to_file,
+    convert_obf_df_to_bytestream,
     obfuscator,
 )
 import pytest
@@ -18,8 +18,6 @@ from moto import mock_aws
 from unittest.mock import patch
 
 # TODO: check out pytest.mark.parametrize 
-# TODO: remove repetative tests 
-# TODO: combine logging and raising tests 
 
 class TestValidateJSON:
     def test_validate_json_returns_dict_if_json_valid(
@@ -102,8 +100,8 @@ class TestValidateJSON:
 
 
 class TestExtractS3Details:
-    def test_s3_details_returns_dict(self, mock_dict_for_csv_file):
-        result = extract_s3_details(mock_dict_for_csv_file)
+    def test_s3_details_returns_dict(self, mock_verified_input_for_csv):
+        result = extract_s3_details(mock_verified_input_for_csv)
         assert isinstance(result, dict)
         assert result == {
             "Scheme": "s3",
@@ -194,9 +192,9 @@ class TestExtractFieldsToAlter:
     def test_correct_input_logs_success_msg(
             self,
             caplog,
-            mock_dict_for_csv_file):
+            mock_verified_input_for_csv):
         caplog.set_level(logging.INFO)
-        extract_fields_to_alter(mock_dict_for_csv_file)
+        extract_fields_to_alter(mock_verified_input_for_csv)
         assert "pii fields extracted" in caplog.text
 
     # should be handled in validate_json() # TODO: confirm if required 
@@ -328,17 +326,15 @@ class TestConvertFileToDFFromCSV:
     def test_convert_to_df_returns_df(
             self,
             mock_csv_file_details,
-            mock_s3_client
+            mock_csv_as_bytes
     ):
-        file_object = get_file(mock_csv_file_details, mock_s3_client)
-        result = convert_file_to_df(mock_csv_file_details, file_object)  #
+        result = convert_file_to_df(mock_csv_file_details, mock_csv_as_bytes)  #
         assert isinstance(result, pd.DataFrame)
 
     def test_returns_content_from_the_named_csv_file(
-        self, mock_csv_file_details, mock_s3_client
+        self, mock_csv_file_details, mock_csv_as_bytes
     ):
-        file_object = get_file(mock_csv_file_details, mock_s3_client)
-        df = convert_file_to_df(mock_csv_file_details, file_object)
+        df = convert_file_to_df(mock_csv_file_details, mock_csv_as_bytes)
 
         assert list(df.columns) == ["Name", "Email", "Phone", "DOB", "Notes"]
         # df.keys() also works
@@ -367,7 +363,7 @@ class TestConvertFileToDFFromCSV:
     def test_raises_and_logs_error_if_csv_file_is_empty(
             self,
             mock_bucket,
-            mock_s3_client, 
+            mock_s3_client,
             caplog
     ):
         caplog.set_level(logging.ERROR)
@@ -443,7 +439,7 @@ class TestObfuscateData:
     """fields: ["Name", "Email", "Phone", "DOB", "Notes"]"""
     # TODO: delete when done
 
-    def test_new_object_returned(self, mock_df):
+    def test_new_df_returned(self, mock_df):
         """testing purity - checking new obejct is return"""
         result = obfuscate_data(mock_df, ["Email", "Phone", "DOB"])
         assert isinstance(result, pd.DataFrame)
@@ -491,41 +487,34 @@ class TestObfuscateData:
         assert list(result.loc[1]) == ["Bob", "xxx", "xxx", "xxx", ""]
         assert list(result.loc[7]) == ["Eve", "xxx", "xxx", "xxx", "final row"]
 
-    #this handled already in other function?? 
     def test_logs_error_msg_if_column_does_not_exist(self, mock_df, caplog):
         caplog.set_level(logging.WARNING)
-        result = obfuscate_data(mock_df, ["Address"])
-        assert "Invalid headings identified: ['Address']" in caplog.text
+        obfuscate_data(mock_df, ["Address"])
+        assert "Heading you are trying to obfuscate does not exist: ['Address']" in caplog.text
 
     def test_will_still_obfuscate_data_when_datatype_is_not_str(self, mock_df):
         result = obfuscate_data(mock_df, ["Name", "Email", "Phone", "DOB"])
-        assert list(result.loc[2]) == ["xxx", "xxx", "xxx", "xxx", "legacy"]
-        assert list(result.loc[3]) == ["xxx", "xxx", "xxx", "xxx", None]
-        assert list(result.loc[4]) == ["xxx", "xxx", "xxx", "xxx", "no action"]
-        assert list(result.loc[5]) == ["xxx", "xxx", "xxx",
+        assert list(result.loc[2]) == ["xxx", "xxx", "xxx", "xxx", "legacy"]    # DOB = None
+        assert list(result.loc[3]) == ["xxx", "xxx", "xxx", "xxx", None]        # all = None
+        assert list(result.loc[4]) == ["xxx", "xxx", "xxx", "xxx", "no action"] # phone = 0 
+        assert list(result.loc[5]) == ["xxx", "xxx", "xxx",                     # Phone = False, Email = 42
                                        "xxx", "special chars: ♥"]
-        assert list(result.loc[6]) == ["xxx", "xxx", "xxx",
+        assert list(result.loc[6]) == ["xxx", "xxx", "xxx",                     # Name = 123, Email & Phne = np.nan
                                        "xxx", "large text " * 2]
+    
+    @pytest.mark.skip
+    def test_warning_logged_when_data_missing(self, mock_df, caplog): 
+        caplog.set_level(logging.WARNING)
+        obfuscate_data(mock_df, ["Name", "Email", "Phone", "DOB"])
+        assert "Data missing" in caplog.text
 
-        # TODO: log when incorrect data type present?
 
-        """mock data in list format in case needed for future tests"""
-        # TODO: delete when done
-        # assert list(result.loc[2]) == ["", "", "", None, "legacy"]
-        # assert list(result.loc[3]) == [None, None, None, pd.NaT, None]
-        # assert list(result.loc[4]) == ["Charlie", "charlie@ex.co.uk", 0,
-        # "01/05/1975", "no action"]
-        # assert list(result.loc[5]) == ["Δelta", 42, False, "1970-12-31",
-        # "special chars: ♥"]
-        # assert list(result.loc[6]) == [123, np.nan, np.nan, "2000-07-07",
-        # "large text " * 2]
-
-class TestCovertObfuscatedDFToCSVFile: 
-    def test_returns_object_from_csv(self, mock_obfuscated_df, mock_csv_file_details): 
+class TestCovertObfuscatedDFToCsvBytes: 
+    def test_returns_bytes_for_csv(self, mock_obfuscated_df, mock_csv_file_details): 
         result = convert_obf_df_to_file(mock_obfuscated_df, mock_csv_file_details)
-        assert isinstance(result, object)  #TODO: check object is correct test? 
+        assert isinstance(result, bytes)  
 
-    def test_success_msg_logged_when_csv_file_object_returned(self, mock_obfuscated_df, mock_csv_file_details, caplog): 
+    def test_success_msg_logged_when_csv_bytestream_returned(self, mock_obfuscated_df, mock_csv_file_details, caplog): 
         caplog.set_level(logging.INFO)
         convert_obf_df_to_file(mock_obfuscated_df, mock_csv_file_details)
         assert "obfuscated file ready" in caplog.text
@@ -534,13 +523,13 @@ class TestCovertObfuscatedDFToCSVFile:
     def test_error_if_not_converted_successfully(self):
         pass 
 
-
+@pytest.mark.skip
 class TestCovertObfuscatedDFToJSONFile: 
-    def test_returns_object_from_json(self, mock_obfuscated_df, mock_json_file_details): 
+    def test_returns_bytes_for_json(self, mock_obfuscated_df, mock_json_file_details): 
         result = convert_obf_df_to_file(mock_obfuscated_df, mock_json_file_details)
         assert isinstance(result, object)  #TODO: check object is correct test? 
     
-    def test_success_msg_logged_when_csv_file_object_returned(self, mock_obfuscated_df, mock_json_file_details, caplog): 
+    def test_success_msg_logged_when_json_bytestream_returned(self, mock_obfuscated_df, mock_json_file_details, caplog): 
         caplog.set_level(logging.INFO)
         convert_obf_df_to_file(mock_obfuscated_df, mock_json_file_details)
         assert "obfuscated file ready" in caplog.text
@@ -551,9 +540,19 @@ class TestCovertObfuscatedDFToJSONFile:
 
 
 class TestObfuscator:   
-    @pytest.mark.skip
-    def test_integration_csv(self): 
-        pass 
+
+    def test_integration_csv(self, mock_input_json_for_csv_file, mock_verified_input_for_csv, mock_csv_file_details, mock_s3_client, mock_csv_as_bytes, mock_df, mock_obfuscated_df): 
+        # TODO: chain outputs together 
+        validate_input_json(mock_input_json_for_csv_file)
+        extract_s3_details(mock_verified_input_for_csv)
+        extract_fields_to_alter(mock_verified_input_for_csv)
+        get_file(mock_csv_file_details, mock_s3_client)
+        convert_file_to_df(mock_csv_file_details, mock_csv_as_bytes)  
+        obfuscate_data(mock_df, ["Name", "Email", "Phone", "DOB", "Notes"])
+        result = convert_obf_df_to_file(mock_obfuscated_df, mock_csv_file_details)
+
+        assert isinstance(result, object)
+        assert result == 'Name,Email,Phone,DOB,Notes\nxxx,xxx,xxx,xxx,ok\nxxx,xxx,xxx,xxx,\nxxx,xxx,xxx,xxx,legacy\nxxx,xxx,xxx,xxx,\nxxx,xxx,xxx,xxx,no action\nxxx,xxx,xxx,xxx,special chars: \u2665\nxxx,xxx,xxx,xxx,large text large text \nxxx,xxx,xxx,xxx,final row\n'
 
 @pytest.mark.skip
 class General:
@@ -565,4 +564,7 @@ class General:
 
     def test_runtime_under_1m_with_file_up_to_1mb(self):
         pass  # necessary?
+    
+    def test_for_security_vulnerabilities(self): 
+        pass
 
