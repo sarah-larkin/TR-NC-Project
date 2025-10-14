@@ -266,15 +266,19 @@ def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame: #TODO: 
    
     return df
 
-def convert_obfuscated_df_to_file(obs_df : pd.DataFrame, file_details: dict) -> "file / bytestream object":  # TODO: check what is valid here 
+def convert_obf_df_to_file(obs_df : pd.DataFrame, file_details: dict) -> object:  # TODO: check what is valid here 
 
     file_type = file_details["File_Type"]
+    #file_name = file_details[ "File_Name"] #for local testing only 
 
     if file_type == "csv": 
         output_file = obs_df.to_csv(index=False)
+        #output_file = obs_df.to_csv(f'obf_{file_name}.csv', index=False)  #for local testing only 
+    """extension"""
     if file_type == "json": 
         output_file = obs_df.to_json(index=False)
 
+    logging.info("obfuscated file ready")
     return output_file
 
 
@@ -306,7 +310,7 @@ def obfuscator(input_json: json) -> bytes:
     data = get_file(file_details, s3)
     data_df = convert_file_to_df(file_details, data)  # TODO: this where file type is handled?
     obf_df = obfuscate_data(data_df, fields)
-    file_output = convert_obfuscated_df_to_file(obf_df, file_details)
+    file_output = convert_obf_df_to_file(obf_df, file_details)
     print(file_output)
     return file_output
 

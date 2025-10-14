@@ -5,6 +5,7 @@ from obfuscator.obfuscator import (
     get_file,
     convert_file_to_df,
     obfuscate_data,
+    convert_obf_df_to_file,
     obfuscator,
 )
 import pytest
@@ -406,6 +407,7 @@ class TestConvertFileToDFFromCSV:
         #eg. .json but content is csv 
         pass
 
+
 class TestConvertFileToDFFromJSON:
      def test_returns_content_from_the_named_json_file(
         self, mock_json_file_details, mock_s3_client
@@ -435,6 +437,7 @@ class TestConvertFileToDFFromJSON:
             "01/05/1975",
             "no action",
         ]
+
 
 class TestObfuscateData:
     """fields: ["Name", "Email", "Phone", "DOB", "Notes"]"""
@@ -517,17 +520,39 @@ class TestObfuscateData:
         # assert list(result.loc[6]) == [123, np.nan, np.nan, "2000-07-07",
         # "large text " * 2]
 
+class TestCovertObfuscatedDFToCSVFile: 
+    def test_returns_object_from_csv(self, mock_obfuscated_df, mock_csv_file_details): 
+        result = convert_obf_df_to_file(mock_obfuscated_df, mock_csv_file_details)
+        assert isinstance(result, object)  #TODO: check object is correct test? 
+
+    def test_success_msg_logged_when_csv_file_object_returned(self, mock_obfuscated_df, mock_csv_file_details, caplog): 
+        caplog.set_level(logging.INFO)
+        convert_obf_df_to_file(mock_obfuscated_df, mock_csv_file_details)
+        assert "obfuscated file ready" in caplog.text
+    
+    @pytest.mark.skip
+    def test_error_if_not_converted_successfully(self):
+        pass 
 
 
-class TestObfuscator:
-    # check bucket name is valid and exists
-    # check file name is valid and exists
+class TestCovertObfuscatedDFToJSONFile: 
+    def test_returns_object_from_json(self, mock_obfuscated_df, mock_json_file_details): 
+        result = convert_obf_df_to_file(mock_obfuscated_df, mock_json_file_details)
+        assert isinstance(result, object)  #TODO: check object is correct test? 
+    
+    def test_success_msg_logged_when_csv_file_object_returned(self, mock_obfuscated_df, mock_json_file_details, caplog): 
+        caplog.set_level(logging.INFO)
+        convert_obf_df_to_file(mock_obfuscated_df, mock_json_file_details)
+        assert "obfuscated file ready" in caplog.text
+    
+    @pytest.mark.skip
+    def test_error_if_not_converted_successfully(self):
+        pass 
 
-    def test_csv_file_returns_bytestream(self, mock_input_json_for_csv_file):
-        result = obfuscator(mock_input_json_for_csv_file)
-        assert isinstance(result, bytes)
 
-    def test_integration(self): 
+class TestObfuscator:   
+    @pytest.mark.skip
+    def test_integration_csv(self): 
         pass 
 
 @pytest.mark.skip

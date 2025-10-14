@@ -135,6 +135,66 @@ def mock_df():
     ],
 }
     return pd.DataFrame(d)
+
+@pytest.fixture(scope='function')
+def mock_obfuscated_df(): 
+    """mocked DataFrame"""
+    d = {
+    "Name": [                        
+        "xxx",        
+        "xxx",           
+        "xxx",             
+        "xxx",             
+        "xxx",       
+        "xxx",         
+        "xxx",          
+        "xxx",           
+    ],
+
+    "Email": [
+        "xxx",          
+        "xxx",      
+        "xxx",             
+        "xxx",          
+        "xxx",     
+        "xxx",         
+        "xxx",              
+        "xxx", 
+    ],
+
+    "Phone": [
+        "xxx",          
+        "xxx",      
+        "xxx",             
+        "xxx",          
+        "xxx",     
+        "xxx",         
+        "xxx",              
+        "xxx", 
+    ],
+
+    "DOB": [
+        "xxx",          
+        "xxx",      
+        "xxx",             
+        "xxx",          
+        "xxx",     
+        "xxx",         
+        "xxx",              
+        "xxx", 
+    ],
+    "Notes": [
+        "ok",
+        "",
+        "legacy",
+        None,
+        "no action",
+        "special chars: ♥",
+        "large text " * 2,
+        "final row",
+    ],
+}
+    return pd.DataFrame(d)
  
 @pytest.fixture(scope='function') 
 def mock_input_json_for_csv_file(mock_csv_file_details): 
