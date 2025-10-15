@@ -78,7 +78,6 @@ def validate_input_json(input_json: str) -> dict:
     logging.info("Valid JSON and valid fields")
     return verified_input
 
-
 def extract_file_location_details(verified_input: dict) -> dict:
     """Returns dict with all file and location details.
 
@@ -133,41 +132,26 @@ def extract_file_location_details(verified_input: dict) -> dict:
 
     return file_details
 
-
 def extract_fields_to_alter(verified_input: dict[str, list[str]]) -> list[str]:
-    """using the dict from validate_json() return the headings in a list.
+    """Returns list of the column headings to be obfuscated. 
 
     Args:
-        verified_input (dict):
-        dictionary returned from validate_input_json()
+        verified_input (dict): output from validate_input_json() 
 
     Raises:
-        ValueError: if NoneType  # TODO: confirm if keeping this in
         ValueError: if empty list
-        TypeError: if list contains elements that are not strings
+        TypeError: if list elements are not strings
 
     Returns:
         list: list of fields to be obfuscated
     """
     fields = verified_input["pii_fields"]
 
-    # remove as handled in validate_json?
-    if fields is None:
-        logging.error("fields to obfuscate : None")
-        raise ValueError("fields to obfuscate : None")
-
     if len(fields) == 0:
         logging.error("no fields to obfuscate provided")
         raise ValueError("no fields to obfuscate provided")
 
-    if not isinstance(fields, list):
-        logging.error("fields must be a list")
-        raise TypeError("fields must be a list")
-
-    invalid_fields = []
-    for heading in fields:
-        if not isinstance(heading, str):
-            invalid_fields.append(heading)
+    invalid_fields = [heading for heading in fields if not isinstance(heading, str)]
 
     if invalid_fields:
         logging.error(f"The headings : {invalid_fields} are not strings")

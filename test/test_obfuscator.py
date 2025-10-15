@@ -183,19 +183,6 @@ class TestExtractFieldsToAlter:
         extract_fields_to_alter(mock_verified_input_for_csv)
         assert "pii fields extracted" in caplog.text
 
-    # should be handled in validate_json() # TODO: confirm if required 
-    def test_raises_and_logs_error_if_PII_is_none(self, caplog):
-        caplog.set_level(logging.ERROR)
-        file_path = "s3://test_bucket_TR_NC/test_file.csv"
-        with pytest.raises(ValueError):
-            extract_fields_to_alter(
-                {
-                    "file_to_obfuscate": file_path,
-                    "pii_fields": None,
-                }
-            )
-        assert "fields to obfuscate : None" in caplog.text
-
     def test_logs_and_raises_error_if_fields_list_empty(self, caplog):
         caplog.set_level(logging.ERROR)
         file_path = "s3://test_bucket_TR_NC/test_file.csv"
@@ -206,23 +193,9 @@ class TestExtractFieldsToAlter:
                     "pii_fields": [],
                 }
             )
-        assert "no fields to obfuscate provided" in caplog.text
+        assert "no fields to obfuscate provided" in caplog.text 
 
-    def test_error_raised_and_logged_if_fields_is_not_list(self, caplog):
-        caplog.set_level(logging.ERROR)
-        file_path = "s3://test_bucket_TR_NC/test_file.csv"
-        with pytest.raises(TypeError):
-            extract_fields_to_alter(
-                {
-                    "file_to_obfuscate": file_path,
-                    "pii_fields": "1, 2, 3",
-                }
-            )
-        assert "fields must be a list" in caplog.text
-
-    
-
-    def test_raises_and_logs_error_if_invalid_fields(self, caplog):
+    def test_raises_and_logs_error_if_fields_not_strings(self, caplog):
         caplog.set_level(logging.ERROR)
         file_path = "s3://test_bucket_TR_NC/test_file.csv"
         with pytest.raises(TypeError):
