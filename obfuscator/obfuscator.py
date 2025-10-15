@@ -79,9 +79,25 @@ def validate_input_json(input_json: str) -> dict:
     return verified_input
 
 
-def extract_s3_details(verified_input: dict) -> dict:
+def extract_file_location_details(verified_input: dict) -> dict:
+    """Returns dict with all file and location details.
+
+    Args:
+        verified_input (dict): dictionary output from validate_input_json()
+
+    Raises:
+        ValueError: if empty string - no URL present
+        ValueError: if URL does not contain s3 scheme - not valid for s3
+        ValueError: if file_name/type not identified
+        ValueError: if file_type is not listed as permitted 
+
+    Returns:
+        dict: containing all details relating the the file and location
+    """
+    permitted_file_types = ["csv", "json"]  # update here for extension
 
     url = verified_input["file_to_obfuscate"]
+    
     o = urlparse(url)
 
     scheme = o.scheme
@@ -89,8 +105,6 @@ def extract_s3_details(verified_input: dict) -> dict:
     key = o.path.lstrip("/")  # file_path/file_name (with first / removed)
     file_name = key.split("/")[-1]
     file_type = file_name.split(".")[-1]
-
-    permitted_file_types = ["csv"]  # TODO: update in extension
 
     if len(url) == 0:
         logging.error("no URL")
@@ -100,11 +114,9 @@ def extract_s3_details(verified_input: dict) -> dict:
         logging.error("not a valid s3 URL")
         raise ValueError("not a valid s3 URL")
 
-    # TODO: check if this is engough to verify the URL
-
     if not file_name or "." not in file_name:
-        logging.error("unable to confirm file type")
         file_type = None
+        logging.error("unable to confirm file type")
         raise ValueError("unable to confirm file type")
 
     if file_type not in permitted_file_types:
@@ -169,7 +181,7 @@ def get_file(file_details: dict[str, str], s3: boto3.client) -> bytes:
     """Retrieves file from s3 bucket provided in file details.
 
     Args:
-        file_details (dict): output dict from extract_s3_details()
+        file_details (dict): output dict from extract_file_location_details()
         s3 (object): boto3 s3 client
 
     Raises:
@@ -279,7 +291,7 @@ def convert_obf_df_to_bytestream(obs_df: pd.DataFrame, file_details: dict) -> by
 
     args:
         obs_df (pd.DataFrame) : returned from obfuscate_data()
-        file_details (dict) : output dict from extract_s3_details()
+        file_details (dict) : output dict from extract_file_location_details()
 
     returns:
         bytestream containing file content
@@ -319,7 +331,7 @@ def obfuscator(input_json: str) -> bytes:  # TODO: output object ??
     """
 
     verified_input = validate_input_json(input_json)
-    file_details = extract_s3_details(verified_input)
+    file_details = extract_file_location_details(verified_input)
     fields = extract_fields_to_alter(verified_input)
     data = get_file(file_details, s3)
     data_df = convert_file_to_df(file_details, data)
