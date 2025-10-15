@@ -160,7 +160,6 @@ def extract_fields_to_alter(verified_input: dict[str, list[str]]) -> list[str]:
     logging.info("pii fields extracted")
     return fields
 
-
 def get_file(file_details: dict[str, str], s3: boto3.client) -> bytes:
     """Retrieves file from s3 bucket provided in file details.
 
@@ -175,7 +174,7 @@ def get_file(file_details: dict[str, str], s3: boto3.client) -> bytes:
             'InvalidObjectState' - file is archived, retrieve before proceeding
 
     Returns:
-        bytes: returns bytestream
+        bytes: returns bytestream of extracted file 
     """
     bucket = file_details["Bucket"]
     key = file_details["Key"]
@@ -196,13 +195,12 @@ def get_file(file_details: dict[str, str], s3: boto3.client) -> bytes:
         logging.error(f"for s3://{bucket}/{key} -> {error_code} : {error_msg}")
         raise err
 
-
 def convert_file_to_df(file_details: dict[str, str], data: bytes) -> pd.DataFrame:
-    """takes raw bytes from get_file() and converts to pd.Dataframe
+    """Converts bytestream data to pd.Dataframe
 
     Args:
-        file_details (dict): bucket name, file name/type etc.
-        file_object (bytes): bytes returned from get_file()
+        file_details (dict): output dict from extract_file_location_details()
+        data (bytes): bytes returned from get_file()
 
     Raises:
         pd.errors.EmptyDataError: if file is empty
@@ -228,8 +226,6 @@ def convert_file_to_df(file_details: dict[str, str], data: bytes) -> pd.DataFram
         # if file_type == 'json':
         #     data_object = io.BytesIO(data)
         #     df = pd.read_json(data_object)
-        # if file_type == 'parquet':
-        #     df = pd.read_parquet(io.BytesIO(data))
 
     except pd.errors.EmptyDataError as error:
         logging.error(f"the file: {file_name} from: {bucket} is empty")

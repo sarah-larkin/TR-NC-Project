@@ -225,16 +225,17 @@ class TestGetFile:
         get_file(mock_csv_file_details, mock_s3_client)
         assert "file retrieved" in caplog.text
 
-    # TODO: how to get this passing AND PEP8 compliant? 
-    def test_get_file_return_content_of_csv_file(
+    def test_get_file_returns_content_of_csv_file(
         self, mock_csv_file_details, mock_s3_client
     ):
         output = get_file(mock_csv_file_details, mock_s3_client)
-        expected = b'Name,Email,Phone,DOB,Notes\nAlice,alice@example.com,+1-555-111-2222,1990-01-01,ok\nBob,bob_at_example.com,5551113333,1985-02-03\nCharlie,charlie@ex.co.uk,0,01/05/1975,no action'
+        expected = (
+            b'Name,Email,Phone,DOB,Notes\n'
+            b'Alice,alice@example.com,+1-555-111-2222,1990-01-01,ok\n'
+            b'Bob,bob_at_example.com,5551113333,1985-02-03\n'
+            b'Charlie,charlie@ex.co.uk,0,01/05/1975,no action'
+        )
         assert output == expected
-
-    # should not be receiving invalid URL so test removed.
-    # TODO: check if ParamValidationError should be handled
 
     def test_get_file_raises_and_logs_ClientError_if_bucket_does_not_exist(
             self,
@@ -252,7 +253,10 @@ class TestGetFile:
 
         with pytest.raises(ClientError):
             get_file(test_file_details, mock_s3_client)
-        expected_msg = "for s3://test_bucket_does_not_exist/test_file.csv -> NoSuchBucket : The specified bucket does not exist"
+        expected_msg = (
+            "for s3://test_bucket_does_not_exist/test_file.csv -> "
+            "NoSuchBucket : The specified bucket does not exist"
+        )
         assert expected_msg in caplog.text
 
     def test_get_file_raises_ClientError_with_log_when_file_does_not_exist(
@@ -272,13 +276,11 @@ class TestGetFile:
         }
         with pytest.raises(ClientError):
             get_file(mock_file_details, mock_s3_client)
-        expected_msg = "for s3://test_bucket_TR_NC/WRONG_file.csv -> NoSuchKey : The specified key does not exist."
+        expected_msg = (
+            "for s3://test_bucket_TR_NC/WRONG_file.csv -> "
+            "NoSuchKey : The specified key does not exist."
+        )
         assert expected_msg in caplog.text
-
-    # empty file will be handled in convert_to_df() so removed from here
-    
-    # TODO: check error handling for archived files? 
-    # TODO: check error handling for access issues? is this necessary for library module? (would need patch in testing)
 
 
 class TestConvertFileToDFFromCSV:
@@ -327,7 +329,7 @@ class TestConvertFileToDFFromCSV:
     ):
         caplog.set_level(logging.ERROR)
 
-        # empty file:
+        # put empty file in bucket:
         mock_s3_client.put_object(
             Bucket=mock_bucket,
             Key="empty_file.csv",
@@ -516,7 +518,12 @@ class TestObfuscator:
         result = convert_obf_df_to_bytestream(obf_df, file_details)
 
         assert isinstance(result, bytes)
-        assert result == b'Name,Email,Phone,DOB,Notes\nxxx,xxx,xxx,xxx,ok\nxxx,xxx,xxx,xxx,\nxxx,xxx,xxx,xxx,no action\n'
+        assert result == (
+            b'Name,Email,Phone,DOB,Notes\n'
+            b'xxx,xxx,xxx,xxx,ok\n'
+            b'xxx,xxx,xxx,xxx,\n'
+            b'xxx,xxx,xxx,xxx,no action\n'
+        )
         assert "obfuscated file ready" in caplog.text
 
     def test_integration_csv_with_error(self, mock_s3_client, caplog): 
