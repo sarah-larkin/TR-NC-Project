@@ -17,7 +17,6 @@ import logging
 from moto import mock_aws
 from unittest.mock import patch
 
-# TODO: check out pytest.mark.parametrize 
 
 class TestValidateJSON:
     def test_validate_json_returns_dict_if_json_valid(
@@ -243,7 +242,7 @@ class TestExtractFieldsToAlter:
                     "pii_fields": [1, 2, 3, "pii_fields"],
                 }
             )
-        expected_msg = "The following headings are not strings: [1, 2, 3]"
+        expected_msg = "The headings : [1, 2, 3] are not strings"
         assert expected_msg in caplog.text
 
 @mock_aws
@@ -389,6 +388,9 @@ class TestConvertFileToDFFromCSV:
             in caplog.text
         )
 
+    @pytest.mark.skip
+    def test_logs_error_if_heading_does_not_exist(self): 
+        pass
 
     @pytest.mark.skip
     def test_error_raised_if_file_invalid(self): 

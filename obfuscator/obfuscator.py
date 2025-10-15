@@ -8,14 +8,15 @@ from botocore.exceptions import ClientError
 import time
 
 # TODO: standardise exceptions and logging. raise in helper funcs and log in final func?
-# TODO: use single quotes in f strings 
-# TODO: use () for long strings 
+# TODO: use () for long strings
+# TODO: confirm security, PEP8 compliance.
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG) --> setup in main()/env? --> timestamp?
 # alter level if needed [debug, info, warning, error, critical]
 
 s3 = boto3.client("s3")
+
 
 # Helper functions
 def validate_input_json(input_json: str) -> dict:
@@ -25,24 +26,26 @@ def validate_input_json(input_json: str) -> dict:
         input_json: json string passed into initial function
 
     Raises:
-        ValueERror: Invalid JSON string
+        TypeError:
+        json.JSONDecodeError: Invalid JSON syntax
+        ValueError: Invalid JSON string, expected output format
     """
     try:
         data = json.loads(input_json)
 
-    #if not valid json string: 
-    except TypeError as err: 
-        logging.warning (f'Invalid JSON: {err}')
+    # if not valid json string:
+    except TypeError as err:
+        logging.warning(f"Invalid JSON: {err}")
         raise
-    
-    #invalid json syntax 
-    except json.JSONDecodeError as err: 
-        logging.warning(f"Invalid JSON syntax: {err}")
-        raise ValueError(f"{err}")      #TODO: check 
 
-    except ValueError as err:  # TODO: check ValueError twice?? 
-        logging.warning("Invalid input: {err}")
-        raise 
+    # invalid json syntax
+    except json.JSONDecodeError as err:
+        logging.warning(f"Invalid JSON syntax: {err}")
+        raise ValueError(f"{err}")  # TODO: check
+
+    except ValueError as err:  # TODO: check ValueError twice??
+        logging.warning(f"Invalid input: {err}")
+        raise
 
     if not isinstance(data, dict):
         logging.warning("dictionary format required")
@@ -75,12 +78,13 @@ def validate_input_json(input_json: str) -> dict:
     #     logging.warning(f"Missing Fields: {missing_keys}")
     #     raise ValueError(f"Missing Fields: {missing_keys}")
 
-    verified_input = data 
+    verified_input = data
     logging.info("Valid JSON and valid fields")
     return verified_input
 
 
-    # TODO: complete last 2 tests for this
+# TODO: complete last 2 tests for this
+
 
 def extract_s3_details(verified_input: dict) -> dict:
 
@@ -124,7 +128,8 @@ def extract_s3_details(verified_input: dict) -> dict:
 
     return file_details
 
-def extract_fields_to_alter(verified_input: dict) -> list:
+
+def extract_fields_to_alter(verified_input: dict[str, list[str]]) -> list[str]:
     """using the dict from validate_json() return the headings in a list.
 
     Args:
@@ -141,7 +146,7 @@ def extract_fields_to_alter(verified_input: dict) -> list:
     """
     fields = verified_input["pii_fields"]
 
-    #remove as handled in validate_json?
+    # remove as handled in validate_json?
     if fields is None:
         logging.error("fields to obfuscate : None")
         raise ValueError("fields to obfuscate : None")
@@ -149,7 +154,7 @@ def extract_fields_to_alter(verified_input: dict) -> list:
     if len(fields) == 0:
         logging.error("no fields to obfuscate provided")
         raise ValueError("no fields to obfuscate provided")
-    
+
     if not isinstance(fields, list):
         logging.error("fields must be a list")
         raise TypeError("fields must be a list")
@@ -160,36 +165,38 @@ def extract_fields_to_alter(verified_input: dict) -> list:
             invalid_fields.append(heading)
 
     if invalid_fields:
-        logging.error(
-            f"The following headings are not strings: {invalid_fields}")
-        raise TypeError(
-            f"The following headings are not strings: {invalid_fields}")
+        logging.error(f"The headings : {invalid_fields} are not strings")
+        raise TypeError(f"The headings : {invalid_fields} are not strings")
 
     logging.info("pii fields extracted")
     return fields
 
-def get_file(file_details: dict, s3: object) -> bytes:
-    """Retrieves the named file from the named s3 bucket listed in dict from extract_s3_details()
+
+def get_file(file_details: dict[str, str], s3: boto3.client) -> bytes:
+    """Retrieves file from s3 bucket provided in file details.
 
     Args:
         file_details (dict): output dict from extract_s3_details()
-        s3 (object): boto3 s3 client 
+        s3 (object): boto3 s3 client
 
     Raises:
-        ClientError:"NoSuchBucket" - bucket does not exist/incorrect bucket name 
-                    "NoSuchKey" - file name/path does not exist/ incorrect naming 
-                    "InvalidObjectState" - file is archived and needs to be retrieved first
+        ClientError:
+            'NoSuchBucket' - bucket does not exist/incorrect bucket name
+            'NoSuchKey' - file name/path does not exist/ incorrect naming
+            'InvalidObjectState' - file is archived, retrieve before proceeding
 
     Returns:
-        bytes: returns bytes object ready to be converted to DataFrame in convert_file_to_df()
+        bytes: returns bytestream
     """
     bucket = file_details["Bucket"]
     key = file_details["Key"]
 
     try:
-        file_object = s3.get_object(Bucket=bucket, Key=key)  # returns dict -> ["Body"]=streaming object
-        data_body = file_object["Body"]  # can only be read once 
-        data_bytes = data_body.read()    # .read() to return bytes which are reusable
+        file_object = s3.get_object(
+            Bucket=bucket, Key=key
+        )  # returns dict -> ["Body"]=streaming object
+        data_body = file_object["Body"]  # can only be read once
+        data_bytes = data_body.read()  # .read() returns bytes (reusable)
         logging.info("file retrieved")
         return data_bytes
 
@@ -199,46 +206,51 @@ def get_file(file_details: dict, s3: object) -> bytes:
 
         logging.error(f"for s3://{bucket}/{key} -> {error_code} : {error_msg}")
         raise err
-     
-def convert_file_to_df(file_details: dict, data: bytes) -> (pd.DataFrame):  
+
+
+def convert_file_to_df(file_details: dict[str, str], data: bytes) -> pd.DataFrame:
     """takes raw bytes from get_file() and converts to pd.Dataframe
 
     Args:
-        file_details (dict): dictionary containing file details (bucket name, file name/type) returned from extract_s3_details()
+        file_details (dict): bucket name, file name/type etc.
         file_object (bytes): bytes returned from get_file()
 
     Raises:
-        error: _description_  # TODO: complete 
+        pd.errors.EmptyDataError: if file is empty
 
     Returns:
         pd.DataFrame: return pandas DataFrame
     """
-    
-    file_type = file_details["File_Type"] 
+
+    file_type = file_details["File_Type"]
     file_name = file_details["File_Name"]
     bucket = file_details["Bucket"]
 
     try:
         if file_type == "csv":
-            data_stream = io.BytesIO(data) # convert bytes to in memory file-like object stream
-            df = pd.read_csv(data_stream)  # pandas expects file-like object, can read from stream (not bytes)
+            data_stream = io.BytesIO(
+                data
+            )  # convert bytes to in memory file-like object stream
+            df = pd.read_csv(
+                data_stream
+            )  # pd expects file-like object, can read from stream (not bytes)
+
         """extension:"""
         # if file_type == 'json':
         #     data_object = io.BytesIO(data)
         #     df = pd.read_json(data_object)
-        # if file_type == 'parquet': 
-        #     df = pd.read_parquet(io.BytesIO(data))  #TODO: check if extending? 
+        # if file_type == 'parquet':
+        #     df = pd.read_parquet(io.BytesIO(data))
 
     except pd.errors.EmptyDataError as error:
-        logging.error(
-            f"the file: {file_name} from: {bucket} is empty")
+        logging.error(f"the file: {file_name} from: {bucket} is empty")
         raise error
-    #TODO: handle ParserError? other exceptions? 
+    # TODO: handle ParserError? other exceptions?
     return df
-    
+
 
 def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
-    """obfuscating the values under the headings defined in fields list. 
+    """obfuscating the values under the headings defined in fields list.
 
     args:
     data_df - pd.DataFrame returned from convert_file_to_df()
@@ -248,7 +260,7 @@ def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
     new DataFrame, exact copy of original but with relevant columns obfuscated.
     """
     df = data_df.copy()
- 
+
     invalid_headings = []
 
     for heading in fields:
@@ -259,74 +271,68 @@ def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
             df[heading] = "xxx"
 
     if invalid_headings:
-        logger.warning(f"Heading you are trying to obfuscate does not exist: {invalid_headings}") 
-    
+        logger.warning(f"The Heading : {invalid_headings} does not exist")
+
     """Additional warning possible"""
     # missing_row = df.index[df.isna().any(axis=1)] #  1 = column
     # logger.warning(f"Data missing in the following index locations: {missing_row}")
-   
+
     return df
 
-def convert_obf_df_to_bytestream(obs_df : pd.DataFrame, file_details: dict) -> bytes:
-    """convert obfuscated bystream back to bystream compatible with s3 put_object 
 
-    args: 
-        obs_df (pd.DataFrame) : returned from obfuscate_data() 
+def convert_obf_df_to_bytestream(obs_df: pd.DataFrame, file_details: dict) -> bytes:
+    """converts obfuscated bystream back to bystream
+        (compatible with s3 put_object)
+
+    args:
+        obs_df (pd.DataFrame) : returned from obfuscate_data()
         file_details (dict) : output dict from extract_s3_details()
 
-    returns: 
-        bytestream containing file content 
-    """  
+    returns:
+        bytestream containing file content
+    """
     file_type = file_details["File_Type"]
-    #file_name = file_details[ "File_Name"] #for local testing only 
+    # file_name = file_details[ "File_Name"] #for local testing only
 
-    if file_type == "csv": 
-        buffer = io.BytesIO()  # write to buffer in memory location rather than local file 
-        output_csv = obs_df.to_csv(buffer, index=False) 
-        output_bytestream = buffer.getvalue() 
-        #output_file = obs_df.to_csv(f'obf_{file_name}.csv', index=False)  #for local testing only 
-    
+    if file_type == "csv":
+        buffer = io.BytesIO()  # write to buffer rather than locally
+        obs_df.to_csv(buffer, index=False)
+        output_bytestream = buffer.getvalue()
+
+        """for local testing only"""
+        # output_file = obs_df.to_csv(f'obf_{file_name}.csv', index=False)
+
     """extension"""
-    # if file_type == "json": 
-    #     output_bytestream = obs_df.to_json(index=False) # TODO: check stringIO
+    # if file_type == "json":
+    #     output_bytestream = obs_df.to_json(index=False)
 
     logging.info("obfuscated file ready")
     return output_bytestream
 
 
 # Primary function
-def obfuscator(input_json: json) -> bytes: # TODO: output object ??
-    """
-    function summary:
-    produce a copy of the csv file specified in the input_json
-    (location of file/pii fields to obfuscate) with the specified
-    columns obsuscated so sensitive information remains anonymous.
+def obfuscator(input_json: str) -> bytes:  # TODO: output object ??
+    """produces a copy of the file data with the specified columns obsuscated
+        so sensitive information remains anonymous.
 
     args:
-    JSON string containing:
-    - file to obfuscate - S3 location of the required CSV file for obfuscation
-    - pii fields - names of the fields that are required to be obfuscated
+        JSON string containing:
+        - file to obfuscate - s3 URL locating the required file for obfuscation
+        - pii fields - names of the fields that are required to be obfuscated
 
     returns:
-    new byte string object containing an exact copy of the input file but with
-    the specified sensitive data replaced with obfuscated string
-    (boto3 put_object compatible).
-    (Calling procedure will handle saving returned bytes from this function)
-
-    exceptions: # TODO: list exceptions
+        bytestream containing an exact copy of the input file but with
+        the specified sensitive data replaced with obfuscated string
     """
-    # TODO: update function to incorporate all helper funcs and return bytes
+
     verified_input = validate_input_json(input_json)
     file_details = extract_s3_details(verified_input)
     fields = extract_fields_to_alter(verified_input)
     data = get_file(file_details, s3)
-    data_df = convert_file_to_df(file_details, data) 
+    data_df = convert_file_to_df(file_details, data)
     obf_df = obfuscate_data(data_df, fields)
     file_output = convert_obf_df_to_bytestream(obf_df, file_details)
-    #print(file_output)
     return file_output
-
-
 
 
 if __name__ == "__main__":
@@ -344,21 +350,24 @@ if __name__ == "__main__":
     #    "pii_fields": ["Name", "Sex", "Age"]}))
     # "s3://tr-nc-test-source-files/Titanic-Dataset.csv"
 
-    # TODO: confirm security, PEP8 compliance.
-    
     """run on cli"""
     # #correct version:
-    obfuscator('{"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]}')
+    obfuscator(
+        (
+            '{"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv",'
+            '"pii_fields": ["Name", "Sex", "Age"]}'
+        )
+    )
 
     # #no fields to obfuscate:
     # obfuscator('{"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": []}')
 
     # #no file extension
     # obfuscator('{"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset", "pii_fields": ["Name", "Sex", "Age"]}')
-  
+
     # #invalid json
     # obfuscator('{"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": }')
 
-    #Incorrect URL
-    #obfuscator('{"file_to_obfuscate": "://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]}')
-    #obfuscator('{"file_to_obfuscate": "s3://nc-tr-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]}')
+    # Incorrect URL
+    # obfuscator('{"file_to_obfuscate": "://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]}')
+    # obfuscator('{"file_to_obfuscate": "s3://nc-tr-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]}')

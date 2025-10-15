@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 
 
-#general fixutres 
+#AWS fixutres 
 @pytest.fixture(scope='function', autouse=True)
 def aws_credentials():
     """mocked aws credentials for moto"""
@@ -51,7 +51,7 @@ def mock_csv_file_details(mock_s3_client, mock_bucket):
     """mocked csv file in s3 bucket, returns dict 
     (additional edge cases added to mock_df below)"""
     mock_s3_client.put_object(
-        Bucket=mock_bucket,  #consider upload_fileobj for replicating larger file size
+        Bucket=mock_bucket,  
         Key="test_file.csv",
         Body= b'Name,Email,Phone,DOB,Notes\nAlice,alice@example.com,+1-555-111-2222,1990-01-01,ok\nBob,bob_at_example.com,5551113333,1985-02-03\nCharlie,charlie@ex.co.uk,0,01/05/1975,no action'
         ) #byte string
