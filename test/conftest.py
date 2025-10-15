@@ -94,7 +94,7 @@ def mock_json_file_details(mock_s3_client, mock_bucket):
     return mock_details
 
 
-#extension parquet fixtures?
+"""extension parquet fixtures?"""
 
 #df fixtures
 @pytest.fixture(scope='function')

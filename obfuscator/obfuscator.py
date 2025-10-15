@@ -8,8 +8,8 @@ from botocore.exceptions import ClientError
 import time
 
 # TODO: standardise exceptions and logging. raise in helper funcs and log in final func?
-# TODO: use () for long strings
 # TODO: confirm security, PEP8 compliance.
+# TODO: custom exceptions? 
 
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG) --> setup in main()/env? --> timestamp?
@@ -26,64 +26,53 @@ def validate_input_json(input_json: str) -> dict:
         input_json: json string passed into initial function
 
     Raises:
-        TypeError:
+        TypeError: Not a JSON string being input
         json.JSONDecodeError: Invalid JSON syntax
-        ValueError: Invalid JSON string, expected output format
+        ValueError: Not required output format ie. not dict 
     """
     try:
         data = json.loads(input_json)
 
     # if not valid json string:
     except TypeError as err:
-        logging.warning(f"Invalid JSON: {err}")
+        logging.error(f"invalid JSON: {err}")
         raise
 
     # invalid json syntax
     except json.JSONDecodeError as err:
-        logging.warning(f"Invalid JSON syntax: {err}")
-        raise ValueError(f"{err}")  # TODO: check
-
-    except ValueError as err:  # TODO: check ValueError twice??
-        logging.warning(f"Invalid input: {err}")
+        logging.error(f"invalid JSON syntax: {err}")
         raise
 
+    # invalid output format 
     if not isinstance(data, dict):
-        logging.warning("dictionary format required")
-        raise ValueError
+        logging.error("dictionary format required")
+        raise ValueError("dictionary format required")
+    
+    # missing required output keys 
+    expected_keys = ["file_to_obfuscate", "pii_fields"]
+    input_keys = list(data.keys())
+    missing_keys = []
 
-    if len(data) > 2:
-        logging.warning("additional key(s) present")
+    for field in expected_keys:
+        if field not in input_keys:
+            missing_keys.append(field)
+    if missing_keys:
+        logging.error(f"missing key(s) from json str: {missing_keys}")
+        raise ValueError(f"missing key(s) from json str: {missing_keys}")
 
-    if len(data) < 2:
-        logging.warning("insufficient number of keys present")
+    # invalid output values format
+    if not isinstance(data["file_to_obfuscate"], str):
+        logger.error("file_to_obfuscate must have a string value")
+        raise ValueError("file_to_obfuscate must have a string value")
+    
+    if not isinstance(data["pii_fields"], list): 
+        logger.error("pii_fields must contain a list")
+        raise ValueError("pii_fields must contain a list")
 
-    # # optional: (if keys are fixed)
-    # permitted_keys = ["file_to_obfuscate", "pii_fields"]
-
-    # keys = list(data.keys())
-    # incorrect_keys = []
-    # missing_keys = []
-
-    # for field in keys:
-    #     if field not in permitted_keys:
-    #         incorrect_keys.append(field)
-    # if incorrect_keys:
-    #     logging.warning(f"Fields that are not permitted: {incorrect_keys}")
-    #     raise ValueError(f"Fields that are not permitted: {incorrect_keys}")
-
-    # for field in permitted_keys:
-    #     if field not in keys:
-    #         missing_keys.append(field)
-    # if missing_keys:
-    #     logging.warning(f"Missing Fields: {missing_keys}")
-    #     raise ValueError(f"Missing Fields: {missing_keys}")
-
+    # valid output
     verified_input = data
     logging.info("Valid JSON and valid fields")
     return verified_input
-
-
-# TODO: complete last 2 tests for this
 
 
 def extract_s3_details(verified_input: dict) -> dict:
