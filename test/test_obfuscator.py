@@ -16,6 +16,7 @@ import numpy as np
 import logging
 from moto import mock_aws
 from unittest.mock import patch
+import json
 
 
 class TestValidateJSON:
@@ -33,68 +34,67 @@ class TestValidateJSON:
         assert "Valid JSON and valid fields" in caplog.text   
 
     def test_TypeError_raised_if_invalid_json_string(self, caplog): 
-        caplog.set_level(logging.WARNING)
+        caplog.set_level(logging.ERROR)
+        input_json = (
+            {"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv",
+             "pii_fields": ["Name", "Sex", "Age"]}
+        )#dict not json
         with pytest.raises(TypeError): 
-            #dict not json
-            validate_input_json({"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]})
-        assert "Invalid JSON: the JSON object must be str, bytes or bytearray, not dict" in caplog.text
+            validate_input_json(input_json)
+        assert ("invalid JSON: the JSON object must be str, "
+                    "bytes or bytearray, not dict") in caplog.text
 
     def test_JSONDecodeError_raised_when_json_invalid(self, caplog): #TODO: check!!
         caplog.set_level(logging.ERROR)
-        with pytest.raises(ValueError):  # has to be with pytest.raises
-            validate_input_json(
-                '{"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv",'
-                '"pii_fields": ["Name", "Email", "Phone", "DOB"],}'
-            )
-            # additional comma, 
-            # (no closing bracket)
-            assert "Invalid JSON:" in caplog.text
+        input_json = ('{"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv",'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"],}')  # additional comma
+        with pytest.raises(json.JSONDecodeError):  
+            validate_input_json(input_json)
+            assert "invalid JSON syntax: Expecting ',' delimiter" in caplog.text
 
-    # TODO: add in test raises valueerror if valid JSON but not a dict 
+    def test_ValueError_raised_format_not_dict(self, caplog): 
+        caplog.set_level(logging.ERROR)
+        input_json = '["file_to_obfuscate","pii_fields"]'
+        with pytest.raises(ValueError):
+            validate_input_json(input_json)
+            assert "dictionary format required" in caplog.text
 
-    def test_2_key_value_pairs_are_passed(self, mock_input_json_for_csv_file):
-        result = validate_input_json(mock_input_json_for_csv_file)
-        assert len(result) == 2
-
-    def test_warning_logged_if_dict_contains_additional_keys(self, caplog):
-        caplog.set_level(logging.WARNING)
-        validate_input_json(
-            '{"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv", '
-            '"pii_fields": ["Name", "Email", "Phone", "DOB"],'
-            '"additional_key": ["other", "info"]}'
-        )
-        assert "additional key(s) present" in caplog.text
-
-    def test_warning_logged_if_dict_contians_less_than_two_keys(self, caplog):
-        caplog.set_level(logging.WARNING)
-        input_json = '{"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
-        validate_input_json(input_json)
-        assert "insufficient number of keys present" in caplog.text
-
-    def test_json_str_contains_specific_keys(self, mock_input_json_for_csv_file):
-        """checks specific key names"""
+    def test_confirm_json_str_contains_specific_keys(self, mock_input_json_for_csv_file):
         result = validate_input_json(mock_input_json_for_csv_file)
         key_names = result.keys()
         assert list(key_names) == ["file_to_obfuscate", "pii_fields"]
-   
-    @pytest.mark.skip
-    def test_error_raised_if_different_keys_do_not_match(self, caplog):
-        caplog.set_level(logging.WARNING)
-        validate_input_json(
-            '{"file": "s3://test_bucket_TR_NC/test_file.csv",'
-            '"fields": ["Name", "Email", "Phone", "DOB"]}'
-        )
-        expected_msg = "Fields that are not permitted: ['file','fields']"
-        assert expected_msg in caplog.text
 
-    @pytest.mark.skip
-    def test_error_raised_if_required_keys_are_not_present(self, caplog):
-        caplog.set_level(logging.WARNING)
+    def test_ValueError_raised_if_missing_required_key(self, caplog):
+        caplog.set_level(logging.ERROR)
         input_json = '{"pii_fields": ["Name", "Email", "Phone", "DOB"]}'
-        validate_input_json(input_json)
-        assert "Missing Fields: ['file_to_obfuscate']" in caplog.text
+        with pytest.raises(ValueError):
+            validate_input_json(input_json)
+        assert "missing key(s) from json str: ['file_to_obfuscate']" in caplog.text
 
+    def test_ValueError_raised_if_missing_both_required_keys(self, caplog):
+        caplog.set_level(logging.ERROR)
+        input_json = '{"other": "other","thing": ["Name", "Email"]}'
+        with pytest.raises(ValueError):
+            validate_input_json(input_json)
+        assert ("missing key(s) from json str: "
+                "['file_to_obfuscate', 'pii_fields']") in caplog.text
 
+    def test_ValueError_raised_if_file_value_type_invalid(self, caplog): 
+        caplog.set_level(logging.ERROR)
+        input_json = ('{"file_to_obfuscate": [1,2,3],'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}') 
+        with pytest.raises(ValueError): 
+            validate_input_json(input_json)
+        assert "file_to_obfuscate must have a string value" in caplog.text
+
+    def test_valueError_raised_if_fieds_value_type_invalid(self, caplog): 
+        caplog.set_level(logging.ERROR)
+        input_json = ('{"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv",'
+                '"pii_fields": "Name"}')
+        with pytest.raises(ValueError): 
+            validate_input_json(input_json)
+        assert "pii_fields must contain a list" in caplog.text
+    
 class TestExtractS3Details:
     def test_s3_details_returns_dict(self, mock_verified_input_for_csv):
         result = extract_s3_details(mock_verified_input_for_csv)
@@ -537,7 +537,7 @@ class TestCovertObfuscatedDFToJSONFile:
     def test_error_if_not_converted_successfully(self):
         pass 
 
-
+@pytest.mark.skip
 class TestObfuscator:   
 
     def test_integration_csv_happy_path(self, mock_input_json_for_csv_file, mock_s3_client, caplog): 

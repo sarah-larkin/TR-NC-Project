@@ -23,12 +23,16 @@ def validate_input_json(input_json: str) -> dict:
     """validate JSON string and return dict if valid.
 
     Args:
-        input_json: json string passed into initial function
+        input_json: JSON string passed into initial function
 
     Raises:
-        TypeError: Not a JSON string being input
-        json.JSONDecodeError: Invalid JSON syntax
-        ValueError: Not required output format ie. not dict 
+        TypeError: if not a JSON string being input
+        json.JSONDecodeError: if invalid JSON syntax
+        ValueError: if not required output format (dict), 
+                    missing required keys, or invalid value types
+    
+    Returns: 
+        dictionary: verified input in dictionary format
     """
     try:
         data = json.loads(input_json)
