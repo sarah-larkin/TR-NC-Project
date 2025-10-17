@@ -215,12 +215,9 @@ def convert_file_to_df(file_details: dict[str, str], data: bytes) -> pd.DataFram
 
     try:
         if file_type == "csv":
-            data_stream = io.BytesIO(
-                data
-            )  # convert bytes to in memory file-like object stream
-            df = pd.read_csv(
-                data_stream
-            )  # pd expects file-like object, can read from stream (not bytes)
+            data_stream = io.BytesIO(data)  # convert bytes to in memory file-like object stream
+            df = pd.read_csv(data_stream, on_bad_lines='error')   # pd expects file-like object, 
+                                            # can read from stream (not bytes)
 
         """extension:"""
         # if file_type == 'json':
@@ -230,7 +227,7 @@ def convert_file_to_df(file_details: dict[str, str], data: bytes) -> pd.DataFram
     except pd.errors.EmptyDataError as error:
         logging.error(f"the file: {file_name} from: {bucket} is empty")
         raise error
-    # TODO: handle ParserError? other exceptions?
+
     return df
 
 
@@ -259,7 +256,7 @@ def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
         logger.warning(f"The Heading : {invalid_headings} does not exist")
 
     """Additional warning possible"""
-    # missing_row = df.index[df.isna().any(axis=1)] #  1 = column
+    # missing_row = df.index[df.isna().any(axis=1)] #  1 = column   --> df removes empty lines by default? 
     # logger.warning(f"Data missing in the following index locations: {missing_row}")
 
     return df

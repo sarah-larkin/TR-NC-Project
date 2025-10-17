@@ -53,7 +53,12 @@ def mock_csv_file_details(mock_s3_client, mock_bucket):
     mock_s3_client.put_object(
         Bucket=mock_bucket,  
         Key="test_file.csv",
-        Body= b'Name,Email,Phone,DOB,Notes\nAlice,alice@example.com,+1-555-111-2222,1990-01-01,ok\nBob,bob_at_example.com,5551113333,1985-02-03\nCharlie,charlie@ex.co.uk,0,01/05/1975,no action'
+        Body= (
+            b'Name,Email,Phone,DOB,Notes\n'
+            b'Alice,alice@example.com,+1-555-111-2222,1990-01-01,ok\n'
+            b'Bob,bob_at_example.com,5551113333,1985-02-03\n'
+            b'Charlie,charlie@ex.co.uk,0,01/05/1975,no action'
+            )
         ) #byte string
     mock_details = {"Scheme" : "s3",
                 "Bucket" : "test_bucket_TR_NC",
@@ -62,9 +67,14 @@ def mock_csv_file_details(mock_s3_client, mock_bucket):
                 "File_Type": "csv"}
     return mock_details
  
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='function')  # does not contain same edge cases as df fixture
 def mock_csv_as_bytes(): 
-    data = b'Name,Email,Phone,DOB,Notes\nAlice,alice@example.com,+1-555-111-2222,1990-01-01,ok\nBob,bob_at_example.com,5551113333,1985-02-03\nCharlie,charlie@ex.co.uk,0,01/05/1975,no action'
+    data = (
+        b'Name,Email,Phone,DOB,Notes\n'
+        b'Alice,alice@example.com,+1-555-111-2222,1990-01-01,ok\n'
+        b'Bob,bob_at_example.com,5551113333,1985-02-03\n'
+        b'Charlie,charlie@ex.co.uk,0,01/05/1975,no action'
+    )
     return data 
 
 

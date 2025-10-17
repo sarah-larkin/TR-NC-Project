@@ -353,19 +353,6 @@ class TestConvertFileToDFFromCSV:
             in caplog.text
         )
 
-    @pytest.mark.skip
-    def test_logs_error_if_heading_does_not_exist(self): 
-        pass
-
-    @pytest.mark.skip
-    def test_error_raised_if_file_invalid(self): 
-        #eg. csv with no headers (malformed)
-        pass
-
-    @pytest.mark.skip
-    def test_raises_Error_if_file_type_inconsistent(self): 
-        #eg. .json but content is csv 
-        pass
 
 @pytest.mark.skip
 class TestConvertFileToDFFromJSON:
@@ -450,7 +437,8 @@ class TestObfuscateData:
         assert list(result.loc[0]) == ["Alice", "xxx", "xxx", "xxx", "ok"]
         assert list(result.loc[1]) == ["Bob", "xxx", "xxx", "xxx", ""]
         assert list(result.loc[7]) == ["Eve", "xxx", "xxx", "xxx", "final row"]
-    @pytest.mark.skip
+    
+    @pytest.mark.skip #keep
     def test_logs_error_msg_if_column_does_not_exist(self, mock_df, caplog):
         caplog.set_level(logging.WARNING)
         obfuscate_data(mock_df, ["Address"])
