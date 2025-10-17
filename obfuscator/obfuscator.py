@@ -250,15 +250,11 @@ def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
         if heading not in valid_columns:
             invalid_headings.append(heading)
         else:
-            df[heading] = "xxx"
+            df[heading] = "xxx"  #obfuscating here
 
     if invalid_headings:
         logger.warning(f"The Heading : {invalid_headings} does not exist")
-
-    """Additional warning possible"""
-    # missing_row = df.index[df.isna().any(axis=1)] #  1 = column   --> df removes empty lines by default? 
-    # logger.warning(f"Data missing in the following index locations: {missing_row}")
-
+ 
     return df
 
 

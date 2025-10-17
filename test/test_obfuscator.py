@@ -388,9 +388,6 @@ class TestConvertFileToDFFromJSON:
 
 
 class TestObfuscateData:
-    """fields: ["Name", "Email", "Phone", "DOB", "Notes"]"""
-    # TODO: delete when done
-
     def test_new_df_returned(self, mock_df):
         """testing purity - checking new obejct is return"""
         result = obfuscate_data(mock_df, ["Email", "Phone", "DOB"])
@@ -454,12 +451,6 @@ class TestObfuscateData:
         assert list(result.loc[6]) == ["xxx", "xxx", "xxx",                     # Name = 123, Email & Phne = np.nan
                                        "xxx", "large text " * 2]
     
-    @pytest.mark.skip
-    def test_warning_logged_when_data_missing(self, mock_df, caplog): 
-        caplog.set_level(logging.WARNING)
-        obfuscate_data(mock_df, ["Name", "Email", "Phone", "DOB"])
-        assert "Data missing" in caplog.text
-
 
 class TestCovertObfuscatedDFToCsvBytes: 
     def test_returns_bytes_for_csv(self, mock_obfuscated_df, mock_csv_file_details): 
