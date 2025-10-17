@@ -23,7 +23,7 @@ def validate_input_json(input_json: str) -> dict:
     """validate JSON string and return dict if valid.
 
     Args:
-        input_json: JSON string passed into initial function
+        input_json (JSON str): passed into initial function
 
     Raises:
         TypeError: if not a JSON string being input
@@ -216,8 +216,8 @@ def convert_file_to_df(file_details: dict[str, str], data: bytes) -> pd.DataFram
     try:
         if file_type == "csv":
             data_stream = io.BytesIO(data)  # convert bytes to in memory file-like object stream
-            df = pd.read_csv(data_stream, on_bad_lines='error')   # pd expects file-like object, 
-                                            # can read from stream (not bytes)
+            df = pd.read_csv(data_stream, on_bad_lines='error')  
+            # pd expects file-like object, can read from stream (not bytes)
 
         """extension:"""
         # if file_type == 'json':
@@ -235,8 +235,8 @@ def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
     """obfuscating the values under the headings defined in fields list.
 
     args:
-    data_df - pd.DataFrame returned from convert_file_to_df()
-    fields  - list returned from extract_fields_to_alter()
+    data_df (pd.DataFrame) - returned from convert_file_to_df()
+    fields (list) - returned from extract_fields_to_alter()
 
     returns:
     new DataFrame, exact copy of original but with relevant columns obfuscated.

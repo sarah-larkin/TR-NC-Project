@@ -94,6 +94,7 @@ class TestValidateJSON:
         with pytest.raises(ValueError): 
             validate_input_json(input_json)
         assert "pii_fields must contain a list" in caplog.text
+  
     
 class TestExtractS3Details:
     def test_s3_details_returns_dict(self, mock_verified_input_for_csv):
@@ -438,11 +439,10 @@ class TestObfuscateData:
         assert list(result.loc[1]) == ["Bob", "xxx", "xxx", "xxx", ""]
         assert list(result.loc[7]) == ["Eve", "xxx", "xxx", "xxx", "final row"]
     
-    @pytest.mark.skip #keep
     def test_logs_error_msg_if_column_does_not_exist(self, mock_df, caplog):
         caplog.set_level(logging.WARNING)
         obfuscate_data(mock_df, ["Address"])
-        assert "Heading you are trying to obfuscate does not exist: ['Address']" in caplog.text
+        assert "The Heading : ['Address'] does not exist" in caplog.text
 
     def test_will_still_obfuscate_data_when_datatype_is_not_str(self, mock_df):
         result = obfuscate_data(mock_df, ["Name", "Email", "Phone", "DOB"])
