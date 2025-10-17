@@ -6,6 +6,7 @@ import io
 import boto3
 from botocore.exceptions import ClientError
 import time
+import safety
 
 # TODO: standardise exceptions and logging. raise in helper funcs and log in final func?
 # TODO: confirm security, PEP8 compliance.
@@ -284,6 +285,7 @@ def convert_obf_df_to_bytes(obs_df: pd.DataFrame, file_details: dict) -> bytes:
 
     logging.info("obfuscated file ready")
     return output_bytestream
+    #return output_file
 
 
 # Primary function
@@ -300,6 +302,7 @@ def obfuscator(input_json: str) -> bytes:
         bytestream containing an exact copy of the input file but with
         the specified sensitive data replaced with obfuscated string
     """
+    start_time = time.perf_counter()
 
     verified_input = validate_input_json(input_json)
     file_details = extract_file_location_details(verified_input)
@@ -308,8 +311,13 @@ def obfuscator(input_json: str) -> bytes:
     data_df = convert_file_to_df(file_details, data)
     obf_df = obfuscate_data(data_df, fields)
     file_output = convert_obf_df_to_bytes(obf_df, file_details)
+
+    end_time = time.perf_counter() 
+    print(f"file obfuscated in {end_time - start_time:2f} seconds")
+
     return file_output
 
+    
 
 if __name__ == "__main__":
     # get_csv(bucket='tr-nc-test-source-files',
@@ -327,14 +335,25 @@ if __name__ == "__main__":
     # "s3://tr-nc-test-source-files/Titanic-Dataset.csv"
 
     """run on cli"""
-    # #correct version:
-    obfuscator(
-        (
-            '{"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv",'
-            '"pii_fields": ["Name", "Sex", "Age"]}'
-        )
-    )
+    # #correct version: (Titanic data )
+    # obfuscator(
+    #     (
+    #         '{"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv",'
+    #         '"pii_fields": ["Name", "Sex", "Age"]}'
+    #     )
+    # )
+    #correct version: (customer data - 2.6MB)
 
+    report = safety.check(requirements='requirements.txt')
+    for issue in report:
+        print(issue)
+
+    obfuscator(
+            (
+                '{"file_to_obfuscate": "s3://tr-nc-test-source-files/customer_data.csv",'
+                '"pii_fields": ["gender", "age"]}'
+            )
+        )
     # #no fields to obfuscate:
     # obfuscator('{"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": []}')
 
@@ -347,3 +366,6 @@ if __name__ == "__main__":
     # Incorrect URL
     # obfuscator('{"file_to_obfuscate": "://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]}')
     # obfuscator('{"file_to_obfuscate": "s3://nc-tr-test-source-files/Titanic-Dataset.csv", "pii_fields": ["Name", "Sex", "Age"]}')
+
+
+  

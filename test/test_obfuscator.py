@@ -479,19 +479,26 @@ class TestCovertObfuscatedDFToJSONFile:
         pass 
 
 
-class TestObfuscator:   
-
-    def test_integration_csv_happy_path(self, mock_input_json_for_csv_file, mock_s3_client, caplog): 
+class TestObfuscator:
+    def test_integration_csv_happy_path(
+            self,
+            mock_s3_client,
+            mock_csv_file_details,
+            caplog): 
+        
+        valid_json = ('{"file_to_obfuscate": "s3://test_bucket_TR_NC/test_file.csv",'
+                '"pii_fields": ["Name", "Email", "Phone", "DOB"]}')
         
         caplog.set_level(logging.INFO)
 
-        verified_input = validate_input_json(mock_input_json_for_csv_file)
+        verified_input = validate_input_json(valid_json)
         file_details = extract_file_location_details(verified_input)
         fields_to_alter = extract_fields_to_alter(verified_input)
         data =get_file(file_details, mock_s3_client)
         df = convert_file_to_df(file_details, data)  
         obf_df = obfuscate_data(df, fields_to_alter)
-        result = convert_obf_df_to_bytes(obf_df, file_details)
+        convert_obf_df_to_bytes(obf_df, file_details)
+        result = obfuscator(valid_json)
 
         assert isinstance(result, bytes)
         assert result == (
