@@ -216,7 +216,7 @@ def convert_file_to_df(file_details: dict[str, str], data: bytes) -> pd.DataFram
     try:
         if file_type == "csv":
             data_stream = io.BytesIO(data)  # convert bytes to in memory file-like object stream
-            df = pd.read_csv(data_stream, on_bad_lines='error')  
+            df = pd.read_csv(data_stream, on_bad_lines='error')  #  TODO: check 
             # pd expects file-like object, can read from stream (not bytes)
 
         """extension:"""
@@ -229,7 +229,6 @@ def convert_file_to_df(file_details: dict[str, str], data: bytes) -> pd.DataFram
         raise error
 
     return df
-
 
 def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
     """obfuscating the values under the headings defined in fields list.
@@ -253,12 +252,11 @@ def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
             df[heading] = "xxx"  #obfuscating here
 
     if invalid_headings:
-        logger.warning(f"The Heading : {invalid_headings} does not exist")
+        logger.error(f"The Heading : {invalid_headings} does not exist")
  
     return df
 
-
-def convert_obf_df_to_bytestream(obs_df: pd.DataFrame, file_details: dict) -> bytes:
+def convert_obf_df_to_bytes(obs_df: pd.DataFrame, file_details: dict) -> bytes:
     """converts obfuscated bystream back to bystream
         (compatible with s3 put_object)
 
@@ -289,7 +287,7 @@ def convert_obf_df_to_bytestream(obs_df: pd.DataFrame, file_details: dict) -> by
 
 
 # Primary function
-def obfuscator(input_json: str) -> bytes:  # TODO: output object ??
+def obfuscator(input_json: str) -> bytes:
     """produces a copy of the file data with the specified columns obsuscated
         so sensitive information remains anonymous.
 
@@ -309,7 +307,7 @@ def obfuscator(input_json: str) -> bytes:  # TODO: output object ??
     data = get_file(file_details, s3)
     data_df = convert_file_to_df(file_details, data)
     obf_df = obfuscate_data(data_df, fields)
-    file_output = convert_obf_df_to_bytestream(obf_df, file_details)
+    file_output = convert_obf_df_to_bytes(obf_df, file_details)
     return file_output
 
 
