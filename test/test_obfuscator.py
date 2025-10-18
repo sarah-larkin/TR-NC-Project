@@ -403,70 +403,71 @@ class TestConvertFileToDFFromJSON:
             "01/05/1975",
             "no action",
         ]
-    
+
     def test_raises_and_logs_error_if_json_file_is_empty(
             self,
             mock_bucket,
             mock_s3_client,
             caplog
-        ):
-            caplog.set_level(logging.ERROR)
+    ):
+        caplog.set_level(logging.ERROR)
 
-            # put empty file in bucket:
-            mock_s3_client.put_object(
-                Bucket=mock_bucket,
-                Key="empty_file.json",
-                Body=b''
-            )
+        # put empty file in bucket:
+        mock_s3_client.put_object(
+            Bucket=mock_bucket,
+            Key="empty_file.json",
+            Body=b''
+        )
 
-            mock_file_details = {
-                "Scheme": "s3",
-                "Bucket": mock_bucket,
-                "Key": "empty_file.json",
-                "File_Name": "empty_file.json",
-                "File_Type": "json",
-            }
+        mock_file_details = {
+            "Scheme": "s3",
+            "Bucket": mock_bucket,
+            "Key": "empty_file.json",
+            "File_Name": "empty_file.json",
+            "File_Type": "json",
+        }
 
-            file_object = get_file(mock_file_details, mock_s3_client)
+        file_object = get_file(mock_file_details, mock_s3_client)
 
-            with pytest.raises(ValueError):
-                convert_file_to_df(mock_file_details, file_object)
-            assert (
-                "the file: empty_file.json from: test_bucket_TR_NC is empty"
-                in caplog.text
-            )
-    
+        with pytest.raises(ValueError):
+            convert_file_to_df(mock_file_details, file_object)
+        assert (
+            "the file: empty_file.json from: test_bucket_TR_NC is empty"
+            in caplog.text
+        )
+
     def test_raises_and_logs_error_if_json_object_is_empty(
             self,
             mock_bucket,
             mock_s3_client,
             caplog
-        ):
-            caplog.set_level(logging.ERROR)
+    ):
+        caplog.set_level(logging.ERROR)
 
-            # put empty file in bucket:
-            mock_s3_client.put_object(
-                Bucket=mock_bucket,
-                Key="empty_file.json",
-                Body=b'{}'
-            )
+        # put empty file in bucket:
+        mock_s3_client.put_object(
+            Bucket=mock_bucket,
+            Key="empty_file.json",
+            Body=b'{}'
+        )
 
-            mock_file_details = {
-                "Scheme": "s3",
-                "Bucket": mock_bucket,
-                "Key": "empty_file.json",
-                "File_Name": "empty_file.json",
-                "File_Type": "json",
-            }
+        mock_file_details = {
+            "Scheme": "s3",
+            "Bucket": mock_bucket,
+            "Key": "empty_file.json",
+            "File_Name": "empty_file.json",
+            "File_Type": "json",
+        }
 
-            file_object = get_file(mock_file_details, mock_s3_client)
+        file_object = get_file(mock_file_details, mock_s3_client)
 
-            with pytest.raises(ValueError):
-                convert_file_to_df(mock_file_details, file_object)
-            assert (
-                "the file: empty_file.json from: test_bucket_TR_NC is empty"
-                in caplog.text
-            )
+        with pytest.raises(ValueError):
+            convert_file_to_df(mock_file_details, file_object)
+        assert (
+            "the file: empty_file.json from: test_bucket_TR_NC is empty"
+            in caplog.text
+        )
+
 
 class TestObfuscateData:
     def test_new_df_returned(self, mock_df):
