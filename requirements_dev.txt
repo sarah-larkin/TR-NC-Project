@@ -1,0 +1,12 @@
+# testing
+pytest
+pytest-testdox
+moto
+numpy
+
+#formatting (optional) 
+black
+flake8
+
+#security
+pip_audit
