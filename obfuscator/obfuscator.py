@@ -218,18 +218,23 @@ def convert_file_to_df(
 
     try:
         if file_type == "csv":
-            data_stream = io.BytesIO(
-                data
-            )  # convert bytes to in memory file-like object stream
+            data_stream = io.BytesIO(data)
+            # convert bytes to in memory file-like object stream
             df = pd.read_csv(data_stream)
             # pd expects file-like object, can read from stream (not bytes)
 
-        """extension:"""
-        # if file_type == 'json':
-        #     data_object = io.BytesIO(data)
-        #     df = pd.read_json(data_object)
+        if file_type == 'json':
+            data_stream = io.BytesIO(data)
+            df = pd.read_json(data_stream)
+            if len(df) == 0: 
+                logging.error(f"the file: {file_name} from: {bucket} is empty")
+                raise ValueError
 
     except pd.errors.EmptyDataError as error:
+        logging.error(f"the file: {file_name} from: {bucket} is empty")
+        raise error
+    
+    except ValueError as error: 
         logging.error(f"the file: {file_name} from: {bucket} is empty")
         raise error
 
@@ -263,35 +268,38 @@ def obfuscate_data(data_df: pd.DataFrame, fields: list) -> pd.DataFrame:
     return df
 
 
-def convert_obf_df_to_bytes(obs_df: pd.DataFrame, file_details: dict) -> bytes:
+def convert_obf_df_to_bytes(obfs_df: pd.DataFrame, file_details: dict) -> bytes:
     """converts obfuscated bystream back to bystream
         (compatible with s3 put_object)
 
     args:
-        obs_df (pd.DataFrame) : returned from obfuscate_data()
+        obfs_df (pd.DataFrame) : returned from obfuscate_data()
         file_details (dict) : output dict from extract_file_location_details()
 
     returns:
         bytestream containing file content
     """
     file_type = file_details["File_Type"]
-    # file_name = file_details[ "File_Name"] #for local testing only
+    #file_name = file_details["File_Name"] #for local testing only
 
     if file_type == "csv":
         buffer = io.BytesIO()  # write to buffer rather than locally
-        obs_df.to_csv(buffer, index=False)
+        obfs_df.to_csv(buffer, index=False)
         output_bytestream = buffer.getvalue()
 
-        """for local testing only"""
-        # output_file = obs_df.to_csv(f'obf_{file_name}.csv', index=False)
+        #for local testing only
+        #output_file = obfs_df.to_csv(f'obf_{file_name}', index=False)
 
-    """extension"""
-    # if file_type == "json":
-    #     output_bytestream = obs_df.to_json(index=False)
+
+    if file_type == "json":
+        buffer = io.BytesIO()
+        obfs_df.to_json(buffer, orient='records')
+        output_bytestream = buffer.getvalue()
+        #output_file = obfs_df.to_json(f'obf_{file_name}', orient='records')
 
     logging.info("obfuscated file ready")
     return output_bytestream
-    # return output_file
+    #return output_file
 
 
 # Primary function
@@ -316,17 +324,20 @@ def obfuscator(input_json: str) -> bytes:
     data = get_file(file_details, s3)
     data_df = convert_file_to_df(file_details, data)
     obf_df = obfuscate_data(data_df, fields)
-    file_output = convert_obf_df_to_bytes(obf_df, file_details)
+    file_body = convert_obf_df_to_bytes(obf_df, file_details)
 
     end_time = time.perf_counter()
     print(f"file obfuscated in {end_time - start_time:2f} seconds")
 
-    return file_output
+    return file_body
 
 
 if __name__ == "__main__":
 
+    # test datasets from kaggle 
+
     # #correct version: (Titanic data)
+
     # obfuscator(
     #     (
     #         '{"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv",'
@@ -336,12 +347,40 @@ if __name__ == "__main__":
 
 
     # correct version: (customer data - 2.6MB)
-    obfuscator(
-        (
-            '{"file_to_obfuscate": "s3://tr-nc-test-source-files/customer_data.csv",'
-            '"pii_fields": ["gender", "age"]}'
+
+    # body = obfuscator('{"file_to_obfuscate": "s3://tr-nc-test-source-files/customer_data.csv",'
+    #         '"pii_fields": ["gender", "age"]}')
+
+    # s3.put_object(
+    #     Body=body,
+    #     Bucket='tr-nc-test-source-files',
+    #     Key= 'obfs_cust_data.csv')
+
+        #s3://tr-nc-test-source-files/obfs_cust_data.csv
+
+
+
+    #correct version: (json data)
+    # obfuscator(
+    #     '{"file_to_obfuscate": "s3://tr-nc-test-source-files/data.json",'
+    #     '"pii_fields": ["phone_brand", "phone_model"]}'
+    # )
+
+
+
+    body = obfuscator(
+            (
+                '{"file_to_obfuscate": "s3://tr-nc-test-source-files/data.json",'
+                '"pii_fields": ["phone_brand", "phone_model"]}'
+            )
         )
-    )
+    
+    s3.put_object(
+        Body=body,
+        Bucket='tr-nc-test-source-files',
+        Key='obfs_data.json')
+
+
     # #no fields to obfuscate:
     # obfuscator('{"file_to_obfuscate": "s3://tr-nc-test-source-files/Titanic-Dataset.csv", "pii_fields": []}')
 

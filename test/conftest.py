@@ -120,6 +120,18 @@ def mock_json_file_details(mock_s3_client, mock_bucket):
 
     return mock_details
 
+@pytest.fixture(scope="function")
+def mock_json_as_bytes():
+    data = (b"{"
+        b'"Name": ["Alice", "Bob", "Charlie"],'
+        b'"Email": ["alice@example.com", "bob_at_example.com",'
+        b'"charlie@ex.co.uk"],'
+        b'"Phone": ["+1-555-111-2222", "5551113333", "0"],'
+        b'"DOB": ["1990-01-01", "1985-02-03", "01/05/1975"],'
+        b'"Notes": ["ok", null, "no action"]'
+        b"}"
+    )
+    return data
 
 """extension parquet fixtures?"""
 

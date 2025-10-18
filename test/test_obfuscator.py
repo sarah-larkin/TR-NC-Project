@@ -364,10 +364,19 @@ class TestConvertFileToDFFromCSV:
         )
 
 
-@pytest.mark.skip
 class TestConvertFileToDFFromJSON:
+    def test_convert_to_df_returns_df(
+        self,
+        mock_json_file_details,
+        mock_json_as_bytes
+    ):
+        result = convert_file_to_df(mock_json_file_details, mock_json_as_bytes)
+        assert isinstance(result, pd.DataFrame)
+
     def test_returns_content_from_the_named_json_file(
-        self, mock_json_file_details, mock_s3_client
+        self,
+        mock_json_file_details,
+        mock_s3_client
     ):
         file_object = get_file(mock_json_file_details, mock_s3_client)
         df = convert_file_to_df(mock_json_file_details, file_object)
@@ -394,7 +403,70 @@ class TestConvertFileToDFFromJSON:
             "01/05/1975",
             "no action",
         ]
+    
+    def test_raises_and_logs_error_if_json_file_is_empty(
+            self,
+            mock_bucket,
+            mock_s3_client,
+            caplog
+        ):
+            caplog.set_level(logging.ERROR)
 
+            # put empty file in bucket:
+            mock_s3_client.put_object(
+                Bucket=mock_bucket,
+                Key="empty_file.json",
+                Body=b''
+            )
+
+            mock_file_details = {
+                "Scheme": "s3",
+                "Bucket": mock_bucket,
+                "Key": "empty_file.json",
+                "File_Name": "empty_file.json",
+                "File_Type": "json",
+            }
+
+            file_object = get_file(mock_file_details, mock_s3_client)
+
+            with pytest.raises(ValueError):
+                convert_file_to_df(mock_file_details, file_object)
+            assert (
+                "the file: empty_file.json from: test_bucket_TR_NC is empty"
+                in caplog.text
+            )
+    
+    def test_raises_and_logs_error_if_json_object_is_empty(
+            self,
+            mock_bucket,
+            mock_s3_client,
+            caplog
+        ):
+            caplog.set_level(logging.ERROR)
+
+            # put empty file in bucket:
+            mock_s3_client.put_object(
+                Bucket=mock_bucket,
+                Key="empty_file.json",
+                Body=b'{}'
+            )
+
+            mock_file_details = {
+                "Scheme": "s3",
+                "Bucket": mock_bucket,
+                "Key": "empty_file.json",
+                "File_Name": "empty_file.json",
+                "File_Type": "json",
+            }
+
+            file_object = get_file(mock_file_details, mock_s3_client)
+
+            with pytest.raises(ValueError):
+                convert_file_to_df(mock_file_details, file_object)
+            assert (
+                "the file: empty_file.json from: test_bucket_TR_NC is empty"
+                in caplog.text
+            )
 
 class TestObfuscateData:
     def test_new_df_returned(self, mock_df):
@@ -509,7 +581,6 @@ class TestCovertObfuscatedDFToBytesForCSV:
         assert "obfuscated file ready" in caplog.text
 
 
-@pytest.mark.skip
 class TestCovertObfuscatedDFToJSONFile:
     def test_returns_bytes_for_json(
             self,
@@ -528,10 +599,6 @@ class TestCovertObfuscatedDFToJSONFile:
         caplog.set_level(logging.INFO)
         convert_obf_df_to_bytes(mock_obfuscated_df, mock_json_file_details)
         assert "obfuscated file ready" in caplog.text
-
-    @pytest.mark.skip
-    def test_error_if_not_converted_successfully(self):
-        pass
 
 
 class TestObfuscator:
@@ -674,12 +741,3 @@ class TestObfuscator:
 class General:
     def test_compatible_with_s3_put_object(self):
         pass  # necessary?
-
-    def test_module_size_does_not_exceed_limit(self):
-        pass  # necessary?
-
-    def test_runtime_under_1m_with_file_up_to_1mb(self):
-        pass  # necessary?
-
-    def test_for_security_vulnerabilities(self):
-        pass
