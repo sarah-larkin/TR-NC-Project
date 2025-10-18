@@ -737,8 +737,3 @@ class TestObfuscator:
         obfuscate_data(df, fields_to_alter)
         assert "The Heading : ['Age'] does not exist" in caplog.text
 
-
-@pytest.mark.skip
-class General:
-    def test_compatible_with_s3_put_object(self):
-        pass  # necessary?
