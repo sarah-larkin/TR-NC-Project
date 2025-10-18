@@ -72,6 +72,26 @@ obfuscator(
      '"pii_fields": ["gender", "age"]}'
 )
 ```
+- Example input 
+```
+customer_id	gender	age	payment_method
+C241288	Female	28	Credit Card
+C111565	Male	21	Debit Card
+C266599	Male	20	Cash
+C988172	Female	66	Credit Card
+C189076	Female	53	Cash
+
+```
+- Example output 
+```
+customer_id	gender	age	payment_method
+C241288	xxx	xxx	Credit Card
+C111565	xxx	xxx	Debit Card
+C266599	xxx	xxx	Cash
+C988172	xxx	xxx	Credit Card
+C189076	xxx	xxx	Cash
+
+```
 - example using the boto3 put_object: 
 ```
 body = obfuscator('{"file_to_obfuscate": "s3://tr-nc-test-source-files/customer_data.csv","pii_fields": ["gender", "age"]}')
